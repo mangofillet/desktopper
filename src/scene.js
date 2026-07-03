@@ -551,7 +551,7 @@ export function buildScene(scene) {
     root.add(spk);
     interactables.push({ id: `speaker-${x < 0 ? "l" : "r"}`, kind: "speaker", object: spk });
   }
-  let speakersOn = false;
+  let speakersOn = true; // powered on by default
   const setSpeakersOn = (on) => { speakersOn = on; };
 
   // ================= Framed photo =================

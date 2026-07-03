@@ -3,7 +3,10 @@
 // DISTINCT, editable filesystem (config.laptop) — separate from the desk props.
 // Papers/presentations/cv open in the full-screen reader; contact links are
 // clickable; the projects drive mounts only with the floppy in; there's a
-// password-locked secret folder.
+// password-locked secret folder. Media plays in a window drawn on the screen
+// itself and keeps playing while you roam the room, as long as the laptop is on.
+import { asset } from "./assets.js";
+import { getPdf } from "./store.js";
 
 const W = 640;
 const H = 480;
@@ -17,8 +20,8 @@ export function createOS({ config }) {
   canvas.height = H;
   const ctx = canvas.getContext("2d");
 
-  // handlers wired after construction (reader/media/links live elsewhere)
-  let handlers = { openReader: () => {}, openUrl: () => {}, playMedia: () => {} };
+  // handlers wired after construction (reader/links/audio-ducking live elsewhere)
+  let handlers = { openReader: () => {}, openUrl: () => {}, mediaDuck: () => {} };
 
   // Read the laptop's own content (falls back to top-level config for compat).
   function data() {
@@ -45,6 +48,7 @@ export function createOS({ config }) {
   let term = null;
   let floppyIn = false;
   let winId = 0;
+  let media = null; // { el, win, type } — a single audio/video player at a time
 
   const BOOT_LINES = [
     "DESKTOPPER BIOS v1.0 — 640K ok",
@@ -89,6 +93,7 @@ export function createOS({ config }) {
   }
 
   const closeWin = (w) => {
+    if (media && w === media.win) { stopMedia(); return; }
     windows = windows.filter((v) => v !== w);
     dirty = true;
   };
@@ -157,6 +162,51 @@ export function createOS({ config }) {
     dirty = true;
   }
 
+  // ---------- media player (in-screen window; keeps playing while you roam) ----------
+  async function openMedia(m) {
+    stopMedia(); // one player at a time
+    const isVideo = m.type === "video";
+    const el = document.createElement(isVideo ? "video" : "audio");
+    el.crossOrigin = "anonymous";
+    el.playsInline = true;
+    el.loop = false;
+    el.style.display = "none"; // hidden — its pixels are drawn onto the OS canvas
+    document.body.appendChild(el);
+    const win = isVideo
+      ? { id: ++winId, type: "media", mtype: "video", name: m.name || "video", el, x: 92, y: 40, w: 456, h: 300, scroll: 0 }
+      : { id: ++winId, type: "media", mtype: "audio", name: m.name || "audio", el, x: 150, y: 74, w: 340, h: 210, scroll: 0 };
+    win.title = (isVideo ? "▶ " : "♪ ") + win.name;
+    media = { el, win, type: m.type };
+    windows.push(win);
+    dirty = true;
+    // resolve a playable source (bundled asset, inline data URL, or uploaded blob)
+    let src = m.url ? asset(m.url) : m.dataUrl || null;
+    if (!src && m.mediaKey) {
+      try {
+        const blob = await getPdf(m.mediaKey); // media blobs share the IndexedDB store
+        if (blob) { src = URL.createObjectURL(blob); win._blobUrl = src; }
+      } catch {}
+    }
+    if (media?.win !== win) return; // superseded/closed while awaiting
+    if (!src) { win.error = "file not found"; dirty = true; return; }
+    el.src = src;
+    el.addEventListener("play", () => { handlers.mediaDuck(true); dirty = true; });
+    el.addEventListener("pause", () => { handlers.mediaDuck(false); dirty = true; });
+    el.addEventListener("ended", () => { handlers.mediaDuck(false); dirty = true; });
+    el.play().catch(() => { dirty = true; });
+  }
+
+  function stopMedia() {
+    if (!media) return;
+    const m = media;
+    media = null;
+    try { m.el.pause(); m.el.removeAttribute("src"); m.el.load(); m.el.remove(); } catch {}
+    if (m.win._blobUrl) { try { URL.revokeObjectURL(m.win._blobUrl); } catch {} }
+    windows = windows.filter((w) => w !== m.win);
+    handlers.mediaDuck(false);
+    dirty = true;
+  }
+
   // File → reader/doc/link routing.
   const paperItem = (p) => ({ ...p, title: p.title || p.pdfName || "document" });
   function openPaper(p) { handlers.openReader(paperItem(p)); }
@@ -187,7 +237,7 @@ export function createOS({ config }) {
       return d.media.map((m) => ({
         glyph: m.type === "video" ? "▶" : "♪",
         label: m.name || "media",
-        onClick: () => handlers.playMedia(m),
+        onClick: () => openMedia(m),
       }));
     return [];
   }
@@ -399,6 +449,8 @@ export function createOS({ config }) {
           region(bx, ly - 14, bw, 20, () => handlers.openUrl(lk.url));
         });
       });
+    } else if (w.type === "media") {
+      drawMedia(w);
     } else if (w.type === "term") {
       windowFrame(w, term?.pw ? "jin@desk: ~ [locked]" : "jin@desk: ~");
       ctx.save();
@@ -418,6 +470,73 @@ export function createOS({ config }) {
     }
   }
 
+  const fmtTime = (s) => {
+    s = Math.max(0, Math.floor(s || 0));
+    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  };
+
+  function drawMedia(w) {
+    windowFrame(w, w.title);
+    const el = w.el;
+    const bx = w.x + 10, by = w.y + 30;
+    const bw = w.w - 20, bh = w.h - 40 - 20; // leave a strip for the progress bar
+    if (w.error) {
+      ctx.fillStyle = "#d39a8e";
+      ctx.font = "13px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(w.error, w.x + w.w / 2, w.y + w.h / 2);
+    } else if (w.mtype === "video") {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(bx, by, bw, bh);
+      if (el.readyState >= 2 && el.videoWidth) {
+        const s = Math.min(bw / el.videoWidth, bh / el.videoHeight);
+        const dw = el.videoWidth * s, dh = el.videoHeight * s;
+        try { ctx.drawImage(el, bx + (bw - dw) / 2, by + (bh - dh) / 2, dw, dh); } catch {}
+      } else {
+        ctx.fillStyle = "#6fbf8f";
+        ctx.font = "12px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText("loading…", w.x + w.w / 2, by + bh / 2);
+      }
+    } else {
+      // audio: a "now playing" card with a little equaliser
+      const cx = w.x + w.w / 2;
+      ctx.fillStyle = "#7fd9a4";
+      ctx.font = "40px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("♪", cx, by + 52);
+      ctx.fillStyle = "#e2efe6";
+      ctx.font = "13px monospace";
+      ctx.fillText(w.name.slice(0, 30), cx, by + 84);
+      for (let i = 0; i < 11; i++) {
+        const amp = el.paused ? 4 : 6 + Math.abs(Math.sin(now * 3.2 + i * 0.7)) * 22;
+        ctx.fillStyle = el.paused ? "rgba(120,170,140,0.35)" : "#3aa66a";
+        ctx.fillRect(cx - 66 + i * 12, by + 128 - amp, 7, amp);
+      }
+    }
+    // progress bar + status line (shared by audio & video)
+    const dur = el.duration || 0, cur = el.currentTime || 0;
+    const pb = w.x + 10, pw = w.w - 20, py = w.y + w.h - 14;
+    ctx.fillStyle = "rgba(255,255,255,0.14)";
+    ctx.fillRect(pb, py, pw, 4);
+    if (dur) {
+      ctx.fillStyle = MINT;
+      ctx.fillRect(pb, py, pw * Math.min(1, cur / dur), 4);
+    }
+    ctx.fillStyle = "#9ab0a0";
+    ctx.font = "10px monospace";
+    ctx.textAlign = "left";
+    ctx.fillText((el.paused ? "❚❚ paused" : "▶ playing") + "   " + fmtTime(cur) + " / " + fmtTime(dur), pb, py - 6);
+    // click the frame body to toggle play/pause; click the bar to seek
+    region(bx, by, bw, bh, () => {
+      if (el.paused) el.play().catch(() => {}); else el.pause();
+      dirty = true;
+    });
+    region(pb, py - 4, pw, 12, (px) => {
+      if (dur) { el.currentTime = dur * Math.max(0, Math.min(1, (px - pb) / pw)); dirty = true; }
+    });
+  }
+
   // ---------- public API ----------
   function wake() {
     if (mode !== "sleep") return;
@@ -430,7 +549,7 @@ export function createOS({ config }) {
     for (let i = regions.length - 1; i >= 0; i--) {
       const r = regions[i];
       if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) {
-        r.onClick();
+        r.onClick(px, py);
         dirty = true;
         return true;
       }
@@ -474,7 +593,9 @@ export function createOS({ config }) {
 
   function tick(t) {
     now = t;
-    const animating = mode === "boot" || mode === "sleep" || windows.some((w) => w.type === "term");
+    const mediaLive = media && !media.el.paused && !media.el.ended;
+    const animating =
+      mode === "boot" || mode === "sleep" || mediaLive || windows.some((w) => w.type === "term");
     if (!dirty && !animating) return false;
     regions = [];
     if (mode === "sleep") drawSleep();

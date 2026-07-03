@@ -1,8 +1,6 @@
 import * as THREE from "three";
-import { playTrack, stopTrack, startAmbience } from "./audio.js";
-import { asset } from "./assets.js";
+import { playTrack, stopTrack, startAmbience, pauseAmbience, resumeAmbience } from "./audio.js";
 import { createReader } from "./reader.js";
-import { getPdf } from "./store.js";
 
 // Hover (lift + warm emissive glow) and click-to-focus camera flights.
 // Interactables are registered by scene.js as:
@@ -154,45 +152,12 @@ export function setupInteractions({
   // ---------- document reader (papers open here) ----------
   const reader = createReader({ onClose: () => goHome() });
 
-  // ---------- simple media player for the laptop's audio/video files ----------
-  const mediaOverlay = document.createElement("div");
-  mediaOverlay.id = "dt-media";
-  mediaOverlay.style.cssText =
-    "position:fixed;inset:0;z-index:42;display:none;align-items:center;justify-content:center;" +
-    "background:rgba(6,5,4,0.82);backdrop-filter:blur(6px)";
-  mediaOverlay.innerHTML =
-    `<div style="position:relative;max-width:88vw;max-height:86vh">` +
-    `<button id="dt-media-x" style="position:absolute;top:-34px;right:0;background:#2b2620;color:#ece3d2;` +
-    `border:1px solid #554b3d;border-radius:6px;padding:5px 11px;cursor:pointer;font:13px system-ui">close ✕</button>` +
-    `<div id="dt-media-slot"></div></div>`;
-  document.body.appendChild(mediaOverlay);
-  const mediaSlot = mediaOverlay.querySelector("#dt-media-slot");
-  function closeMedia() {
-    mediaSlot.innerHTML = "";
-    mediaOverlay.style.display = "none";
-  }
-  mediaOverlay.querySelector("#dt-media-x").addEventListener("click", closeMedia);
-  mediaOverlay.addEventListener("click", (e) => { if (e.target === mediaOverlay) closeMedia(); });
-  async function playMedia(m) {
-    let src = m?.url ? asset(m.url) : m?.dataUrl || null;
-    if (!src && m?.mediaKey) {
-      const blob = await getPdf(m.mediaKey); // IndexedDB stores media blobs too
-      if (blob) src = URL.createObjectURL(blob);
-    }
-    if (!src) return;
-    if (m.type === "video") {
-      mediaSlot.innerHTML = `<video src="${src}" controls autoplay style="max-width:88vw;max-height:82vh;border-radius:8px"></video>`;
-      mediaOverlay.style.display = "flex";
-    } else {
-      mediaSlot.innerHTML =
-        `<div style="background:#1c1915;color:#e8ddca;padding:26px 30px;border-radius:10px;font:14px system-ui;min-width:280px">` +
-        `<div style="margin-bottom:12px">♪ ${m.name || "audio"}</div>` +
-        `<audio src="${src}" controls autoplay style="width:100%"></audio></div>`;
-      mediaOverlay.style.display = "flex";
-    }
-  }
-
-  os?.setHandlers({ openReader: (item) => reader.open(item), playMedia });
+  // Laptop media now plays in a window drawn on the screen itself (see os.js);
+  // here we just let the OS hush the ambient birdsong while its audio plays.
+  os?.setHandlers({
+    openReader: (item) => reader.open(item),
+    mediaDuck: (on) => (on ? pauseAmbience() : resumeAmbience()),
+  });
 
   // ---------- overlay content ----------
   function showCard(item) {
@@ -264,7 +229,7 @@ export function setupInteractions({
   }
 
   // ---------- speakers: an on/off prop (drives laptop media audio later) ----------
-  let speakersOn = false;
+  let speakersOn = true; // powered on by default
   function toggleSpeakers() {
     speakersOn = !speakersOn;
     setSpeakersOn?.(speakersOn);

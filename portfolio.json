@@ -87,16 +87,76 @@
     },
     "papers": [
       {
-        "title": "Emergent Structure in Deep Latent Spaces",
-        "authors": "J. Doe, A. N. Other",
-        "venue": "NeurIPS 2024",
-        "abstract": "Latent representations self-organise into geometric structures mirroring the symmetries of their training data."
+        "title": "Allogeneic MHC-mismatched microglia-like cell replacement as a therapeutic approach for multiple sclerosis",
+        "authors": "I. Benito-Cuesta, J-H. Min, Y. Guo, et al., R. A. Harris",
+        "venue": "Preprint",
+        "year": 2026
       },
       {
-        "title": "Scaling Laws for Coupled Oscillator Networks",
-        "authors": "J. Doe",
-        "venue": "Chaos 2021",
-        "abstract": "Synchronisation thresholds follow a universal scaling collapse across five orders of magnitude."
+        "title": "TGFβ signaling mediates microglial resilience to spatiotemporally restricted myelin degeneration",
+        "authors": "K. Zhu, Y. Liu, J-H. Min, et al., H. Lund",
+        "venue": "Nature Neuroscience",
+        "year": 2026
+      },
+      {
+        "title": "Human placental stem cells induce a novel multiple myeloid cell-driven immunosuppressive program that ameliorates proinflammatory CNS pathology",
+        "authors": "H. Sarlus, Y. Guo, K. Zhu, J-H. Min, et al., R. A. Harris",
+        "venue": "Preprint",
+        "year": 2025
+      },
+      {
+        "title": "Publisher Correction: Thioflavin-T: application as a neuronal body and nucleolar stain and the blue light photo enhancement effect",
+        "authors": "J-H. Min, H. Sarlus, S. Oasa, R. A. Harris",
+        "venue": "Scientific Reports",
+        "year": 2024
+      },
+      {
+        "title": "Thioflavin-T: application as a neuronal body and nucleolar stain and the blue light photo enhancement effect",
+        "authors": "J-H. Min, H. Sarlus, S. Oasa, R. A. Harris",
+        "venue": "Scientific Reports",
+        "year": 2024
+      },
+      {
+        "title": "MAD — Microbial (origin of) Alzheimer's disease hypothesis: From Infection and the Antimicrobial Response to Disruption of Key Copper-based Systems",
+        "authors": "J-H. Min, H. Sarlus, R. A. Harris",
+        "venue": "Frontiers in Neuroscience",
+        "year": 2024
+      },
+      {
+        "title": "Copper Toxicity and Deficiency: The Vicious Cycle at the Core of Protein Aggregation in ALS",
+        "authors": "J-H. Min, R. A. Harris, H. Sarlus",
+        "venue": "Frontiers in Molecular Neuroscience",
+        "year": 2024
+      },
+      {
+        "title": "Glycyl-L-histidyl-L-lysine prevents copper- and zinc-induced protein aggregation and central nervous system cell death in vitro",
+        "authors": "J-H. Min, H. Sarlus, R. A. Harris",
+        "venue": "Metallomics",
+        "year": 2024
+      },
+      {
+        "title": "Human Amnion Epithelial Cells reduce disease progression in a mouse model for multiple sclerosis",
+        "authors": "H. Sarlus, K. Zhu, Y. Guo, J-H. Min, et al., R. Gramignoli",
+        "venue": "Transplantation",
+        "year": 2023
+      },
+      {
+        "title": "Disrupting microglial TGF-β signaling triggers region-specific pathology in the spinal cord",
+        "authors": "K. Zhu, J-H. Min, V. Joshua, et al., H. Lund",
+        "venue": "bioRxiv",
+        "year": 2023
+      },
+      {
+        "title": "Myeloid cell-specific topoisomerase 1 inhibition using DNA origami mitigates neuroinflammation",
+        "authors": "K. Zhu, Y. Wang, H. Sarlus, J-H. Min, et al., R. A. Harris",
+        "venue": "EMBO Reports",
+        "year": 2022
+      },
+      {
+        "title": "C-type lectin receptors Mcl and Mincle control development of multiple sclerosis-like neuroinflammation",
+        "authors": "M. N'diaye, S. Brauner, J-H. Min, et al., M. Jagodic",
+        "venue": "The Journal of Clinical Investigation",
+        "year": 2020
       }
     ],
     "presentations": [
