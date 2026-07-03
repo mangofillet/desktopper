@@ -439,6 +439,9 @@ export function buildScene(scene) {
   lampLight.shadow.radius = 6;
   root.add(lampLight, lampLight.target);
 
+  // The whole lamp is clickable to toggle its light (handled in interactions).
+  interactables.push({ id: "lamp", kind: "lamp", object: lampG });
+
   // ================= Papers (one sheet per config paper, up to 6) =================
   const paperGeo = new THREE.PlaneGeometry(0.21, 0.297);
   const paperSpots = [
@@ -974,10 +977,11 @@ export function buildScene(scene) {
   // blow out inside its hotspot, and the dim reads like eyes adjusting.
   let dim = 0;
   let dimTarget = 0;
+  let lampOn = true;
   function animate(t) {
     dim += (dimTarget - dim) * 0.05;
     const base = 4.6 + Math.sin(t * 1.7) * 0.12 + Math.sin(t * 7.3) * 0.04;
-    lampLight.intensity = base * (1 - dim * 0.55);
+    lampLight.intensity = lampOn ? base * (1 - dim * 0.55) : 0;
     screenGlow.intensity = 0.25 + Math.sin(t * 11) * 0.015;
     // Speaker LEDs: steady green with a faint breathe when on, dim red when off.
     if (speakersOn) {
@@ -1005,6 +1009,13 @@ export function buildScene(scene) {
     dimTarget = on ? 1 : 0;
   };
 
+  // Click the lamp to switch the bulb on/off. When off, the room falls back to
+  // the ambient/fill lights and the bulb mesh goes dark.
+  const setLampOn = (on) => {
+    lampOn = on;
+    bulb.material.color.setHex(on ? 0xfff2d8 : 0x2a2620);
+  };
+
   // ================= Editable object registry + saved layout =================
   // Movable in edit mode. Interactables carry a `focus`, which we shift by the
   // same delta when the object is repositioned so click-to-focus still lands.
@@ -1013,7 +1024,6 @@ export function buildScene(scene) {
     if (it.id === "laptop") continue; // centrepiece stays put
     editables.push({ id: it.id, object: it.object, item: it });
   }
-  editables.push({ id: "lamp", object: lampG });
   editables.push({ id: "books", object: bookStack });
   editables.push({ id: "pencup", object: cupG });
   editables.push({ id: "photo", object: frame });
@@ -1041,5 +1051,5 @@ export function buildScene(scene) {
     }
   }
 
-  return { animate, interactables, editables, setFocusDim, setSpeakersOn, os, screen };
+  return { animate, interactables, editables, setFocusDim, setSpeakersOn, setLampOn, os, screen };
 }

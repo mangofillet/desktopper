@@ -5,7 +5,7 @@ const css = /* css */ `
   #dt-hero {
     position: fixed; inset: 0 60% 0 0; z-index: 25; pointer-events: none;
     display: flex; align-items: center; padding: 0 5vw;
-    background: linear-gradient(100deg, rgba(230,219,196,1) 82%, rgba(230,219,196,0) 100%);
+    background: linear-gradient(90deg, rgba(230,219,196,1) 96%, rgba(230,219,196,0) 100%);
     transition: opacity 0.7s ease, transform 0.7s ease;
     font-family: Georgia, "Times New Roman", serif; color: #3a3226;
   }

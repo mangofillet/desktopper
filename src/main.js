@@ -44,12 +44,12 @@ controls.minAzimuthAngle = -0.42; // don't swing far enough left to clip the wal
 controls.maxAzimuthAngle = 0.78;
 controls.enablePan = false;
 
-const { animate: animateScene, interactables, editables, setFocusDim, setSpeakersOn, os, screen } =
+const { animate: animateScene, interactables, editables, setFocusDim, setSpeakersOn, setLampOn, os, screen } =
   buildScene(scene);
 const post = setupPost(renderer, scene, camera);
 const editState = { active: false };
 const interactions = setupInteractions({
-  renderer, camera, controls, interactables, config, setFocusDim, setSpeakersOn,
+  renderer, camera, controls, interactables, config, setFocusDim, setSpeakersOn, setLampOn,
   os, screenMesh: screen, editState,
 });
 setupEditor({ renderer, camera, controls, editables, editState });

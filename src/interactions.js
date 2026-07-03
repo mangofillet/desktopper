@@ -80,7 +80,7 @@ function easeInOutCubic(x) {
 }
 
 export function setupInteractions({
-  renderer, camera, controls, interactables, config, setFocusDim, setSpeakersOn, os, screenMesh,
+  renderer, camera, controls, interactables, config, setFocusDim, setSpeakersOn, setLampOn, os, screenMesh,
   editState,
 }) {
   // ---------- DOM ----------
@@ -271,6 +271,14 @@ export function setupInteractions({
     showCaption(speakersOn ? "speakers on" : "speakers off");
   }
 
+  // ---------- desk lamp: click to switch the light on/off ----------
+  let lampOn = true;
+  function toggleLamp() {
+    lampOn = !lampOn;
+    setLampOn?.(lampOn);
+    showCaption(lampOn ? "lamp on" : "lamp off");
+  }
+
   toast.addEventListener("click", () => {
     takeOffPhones();
     toast.classList.remove("show");
@@ -359,6 +367,11 @@ export function setupInteractions({
       toggleSpeakers();
       return;
     }
+    if (hovered?.kind === "lamp") {
+      hovered.wobbleT = 0;
+      toggleLamp();
+      return;
+    }
     // Clicking the floppy while it's already in the drive ejects it (and
     // unmounts the projects folder from the OS).
     if (hovered === projItem && floppyInserted && focused !== projItem) {
@@ -413,6 +426,7 @@ export function setupInteractions({
     window.__dt = {
       wearPhones,
       takeOffPhones,
+      toggleLamp,
       os,
       focus: (id) => {
         const it = interactables.find((i) => i.id === id);
