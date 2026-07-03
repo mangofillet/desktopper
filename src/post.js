@@ -31,7 +31,7 @@ const GradeShader = {
       // vignette
       vec2 d = vUv - 0.5;
       float vig = smoothstep(0.95, 0.35, length(d) * 1.35);
-      col.rgb *= mix(0.72, 1.0, vig);
+      col.rgb *= mix(0.8, 1.0, vig);
       // faint warm lift in the shadows keeps blacks from going dead
       col.rgb += vec3(0.012, 0.008, 0.006) * (1.0 - vig);
       // grain

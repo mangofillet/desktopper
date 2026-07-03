@@ -32,7 +32,6 @@ export function createOS({ config, openUrl }) {
   // ---------- state ----------
   let mode = "sleep"; // sleep | boot | on
   let bootT0 = 0;
-  let rainT0 = -1;
   let dirty = true;
   let now = 0;
   let windows = []; // {type:'files'|'docs'|'doc'|'term', title, ...}
@@ -183,7 +182,7 @@ export function createOS({ config, openUrl }) {
     ctx.globalAlpha = 0.6 + 0.35 * Math.sin(now * 2.2);
     ctx.font = "19px monospace";
     ctx.fillStyle = "#7fd9a4";
-    ctx.fillText("Wake up…", W / 2, 330);
+    ctx.fillText("click to wake", W / 2, 330);
     ctx.globalAlpha = 1;
     region(0, 0, W, H, wake);
   }
@@ -232,14 +231,6 @@ export function createOS({ config, openUrl }) {
       openDoc("contact.txt", fs["contact.txt"], null)
     );
     icon(18, 324, "▣", "cv.pdf", () => openUrl(config.cvUrl));
-    // the easter egg — faint green text bottom-right of the wallpaper
-    ctx.font = "italic 13px monospace";
-    ctx.textAlign = "right";
-    ctx.fillStyle = `rgba(127, 217, 164, ${0.35 + 0.2 * Math.sin(now * 1.7)})`;
-    ctx.fillText("Wake up…", W - 26, H - BAR - 18);
-    region(W - 120, H - BAR - 34, 100, 24, () => {
-      rainT0 = now;
-    });
 
     // windows
     for (const w of windows) drawWindow(w);
@@ -331,28 +322,6 @@ export function createOS({ config, openUrl }) {
     }
   }
 
-  function drawRain() {
-    // the matrix easter egg: green glyph rain for ~5s
-    ctx.fillStyle = "rgba(4, 10, 5, 0.28)";
-    ctx.fillRect(0, 0, W, H);
-    ctx.font = "15px monospace";
-    ctx.textAlign = "left";
-    const k = now - rainT0;
-    for (let col = 0; col < 40; col++) {
-      const speed = 90 + ((col * 37) % 80);
-      const yy = ((k * speed + col * 331) % (H + 120)) - 60;
-      const ch = String.fromCharCode(0x30a0 + ((col * 7 + Math.floor(yy / 15)) % 90));
-      ctx.fillStyle = "#7fd9a4";
-      ctx.fillText(ch, col * 16 + 4, yy);
-      ctx.fillStyle = "rgba(127, 217, 164, 0.4)";
-      ctx.fillText(ch, col * 16 + 4, yy - 16);
-    }
-    if (k > 5) rainT0 = -1;
-    region(0, 0, W, H, () => {
-      rainT0 = -1;
-    });
-  }
-
   // ---------- public API ----------
   function wake() {
     if (mode !== "sleep") return;
@@ -398,14 +367,13 @@ export function createOS({ config, openUrl }) {
   function tick(t) {
     now = t;
     const animating =
-      mode === "boot" || mode === "sleep" || rainT0 >= 0 ||
+      mode === "boot" || mode === "sleep" ||
       windows.some((w) => w.type === "term");
     if (!dirty && !animating) return false;
     regions = [];
     if (mode === "sleep") drawSleep();
     else if (mode === "boot") drawBoot();
     else drawDesktop();
-    if (rainT0 >= 0 && mode === "on") drawRain();
     dirty = false;
     return true;
   }

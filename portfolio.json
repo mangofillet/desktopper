@@ -9,6 +9,7 @@
     "linkedin": "https://www.linkedin.com"
   },
   "cvUrl": "/cv.pdf",
+  "book": { "title": "Gödel, Escher, Bach", "author": "Douglas R. Hofstadter" },
   "papers": [
     {
       "title": "Emergent Structure in Deep Latent Spaces",

@@ -118,40 +118,48 @@ function wrapTextCentered(ctx, text, cx, y, maxW, lineH) {
 
 export function posterTexture() {
   const [c, ctx] = makeCanvas(420, 594);
-  // Night-swiss poster: deep field, big moon, one line of type.
+  // Warm swiss-style poster: big low sun over hills, one line of type.
   const g = ctx.createLinearGradient(0, 0, 0, 594);
-  g.addColorStop(0, "#0c1626");
-  g.addColorStop(1, "#1a2c3f");
+  g.addColorStop(0, "#e8d5b0");
+  g.addColorStop(1, "#d8a878");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 420, 594);
-  const r = rng(7);
-  ctx.fillStyle = "#c8d6ea";
-  for (let i = 0; i < 90; i++) {
-    ctx.globalAlpha = 0.25 + r() * 0.7;
-    ctx.fillRect(20 + r() * 380, 20 + r() * 420, 1.6, 1.6);
-  }
-  ctx.globalAlpha = 1;
-  const moon = ctx.createRadialGradient(290, 170, 10, 290, 170, 95);
-  moon.addColorStop(0, "#f2ead8");
-  moon.addColorStop(0.75, "#e8dcc4");
-  moon.addColorStop(1, "rgba(232,220,196,0)");
-  ctx.fillStyle = moon;
+  const sun = ctx.createRadialGradient(280, 200, 12, 280, 200, 110);
+  sun.addColorStop(0, "#f8e8c0");
+  sun.addColorStop(0.7, "#eab868");
+  sun.addColorStop(1, "rgba(234,184,104,0)");
+  ctx.fillStyle = sun;
   ctx.beginPath();
-  ctx.arc(290, 170, 95, 0, Math.PI * 2);
+  ctx.arc(280, 200, 110, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "#d8c9a8";
+  ctx.fillStyle = "#e89858";
+  ctx.beginPath();
+  ctx.arc(280, 200, 46, 0, Math.PI * 2);
+  ctx.fill();
+  // layered hills
+  for (const [y, col] of [[320, "#c08858"], [370, "#a87048"], [420, "#8a5a3c"]]) {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(0, 594);
+    ctx.lineTo(0, y + 30);
+    ctx.quadraticCurveTo(210, y - 40, 420, y + 20);
+    ctx.lineTo(420, 594);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.strokeStyle = "#6a4630";
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(40, 480);
-  ctx.lineTo(380, 480);
+  ctx.moveTo(40, 490);
+  ctx.lineTo(380, 490);
   ctx.stroke();
-  ctx.fillStyle = "#e8dfcc";
+  ctx.fillStyle = "#4a3220";
   ctx.font = "28px Georgia, serif";
   ctx.textAlign = "left";
-  ctx.fillText("nocturne", 40, 522);
+  ctx.fillText("golden hour", 40, 528);
   ctx.font = "12px monospace";
-  ctx.fillStyle = "#93a5bd";
-  ctx.fillText("late hours / quiet work", 40, 548);
+  ctx.fillStyle = "#6a4a34";
+  ctx.fillText("slow light / good work", 40, 552);
   return toTexture(c);
 }
 
@@ -248,39 +256,33 @@ export function steamTexture() {
   return t;
 }
 
-export function nightSkyTexture() {
-  // Early evening: blue dusk fading to a warm just-set-sun horizon.
+export function skyTexture() {
+  // Late golden-hour afternoon: soft blue overhead melting into honey at the
+  // horizon, low sun hanging just above a distant treeline.
   const [c, ctx] = makeCanvas(512, 640);
   const g = ctx.createLinearGradient(0, 0, 0, 640);
-  g.addColorStop(0, "#131c3a");
-  g.addColorStop(0.45, "#2b3560");
-  g.addColorStop(0.75, "#5a4668");
-  g.addColorStop(0.92, "#a86a4e");
-  g.addColorStop(1, "#c98a52");
+  g.addColorStop(0, "#8fb0d4");
+  g.addColorStop(0.45, "#c4b492");
+  g.addColorStop(0.75, "#eabd7a");
+  g.addColorStop(1, "#f2c46e");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 512, 640);
   const r = rng(23);
-  for (let i = 0; i < 60; i++) {
-    ctx.globalAlpha = 0.15 + r() * 0.5; // first faint stars, high in the sky
-    ctx.fillStyle = "#dce6f5";
-    ctx.fillRect(r() * 512, r() * 260, 1.5, 1.5);
-  }
-  ctx.globalAlpha = 1;
-  // A pale early moon, upper right — subtler at dusk than at night
-  const halo = ctx.createRadialGradient(380, 390, 16, 380, 390, 80);
-  halo.addColorStop(0, "rgba(238,242,252,0.85)");
-  halo.addColorStop(0.3, "rgba(210,220,245,0.25)");
-  halo.addColorStop(1, "rgba(210,220,245,0)");
+  // The low sun, big warm halo
+  const halo = ctx.createRadialGradient(370, 430, 14, 370, 430, 130);
+  halo.addColorStop(0, "rgba(255,244,214,1)");
+  halo.addColorStop(0.2, "rgba(255,222,150,0.75)");
+  halo.addColorStop(1, "rgba(255,215,140,0)");
   ctx.fillStyle = halo;
   ctx.beginPath();
-  ctx.arc(380, 390, 80, 0, Math.PI * 2);
+  ctx.arc(370, 430, 130, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#e8ecf8";
+  ctx.fillStyle = "#fff6dc";
   ctx.beginPath();
-  ctx.arc(380, 390, 24, 0, Math.PI * 2);
+  ctx.arc(370, 430, 30, 0, Math.PI * 2);
   ctx.fill();
-  // Soft distant treeline at the horizon — no buildings, just evening.
-  ctx.fillStyle = "#1c1520";
+  // Soft distant treeline at the horizon
+  ctx.fillStyle = "#57503e";
   ctx.beginPath();
   ctx.moveTo(0, 640);
   ctx.lineTo(0, 560);
@@ -290,5 +292,12 @@ export function nightSkyTexture() {
   ctx.lineTo(512, 640);
   ctx.closePath();
   ctx.fill();
+  // A hint of glass: one diagonal sheen across the closed pane
+  const sheen = ctx.createLinearGradient(60, 0, 320, 640);
+  sheen.addColorStop(0.32, "rgba(255,255,255,0)");
+  sheen.addColorStop(0.42, "rgba(255,255,255,0.14)");
+  sheen.addColorStop(0.5, "rgba(255,255,255,0)");
+  ctx.fillStyle = sheen;
+  ctx.fillRect(0, 0, 512, 640);
   return toTexture(c);
 }

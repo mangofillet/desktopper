@@ -13,12 +13,12 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
+renderer.toneMappingExposure = 1.2;
 app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x16131e);
-scene.fog = new THREE.Fog(0x16131e, 4, 12);
+scene.background = new THREE.Color(0x241c15);
+scene.fog = new THREE.Fog(0x241c15, 4, 12);
 
 const camera = new THREE.PerspectiveCamera(
   42,
@@ -34,7 +34,7 @@ controls.target.set(0, 0.82, -0.1);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.minDistance = 0.6;
-controls.maxDistance = 3.0;
+controls.maxDistance = 2.1; // desk-locked: never zoom past the cozy bubble
 controls.minPolarAngle = 0.9;
 controls.maxPolarAngle = 1.45;
 controls.minAzimuthAngle = -0.9;

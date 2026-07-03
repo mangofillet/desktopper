@@ -6,7 +6,7 @@ import {
   bookCoverTexture,
   posterTexture,
   stickyTexture,
-  nightSkyTexture,
+  skyTexture,
   steamTexture,
 } from "./textures.js";
 import { createOS } from "./os.js";
@@ -48,7 +48,7 @@ export function buildScene(scene) {
   const floorMat = new THREE.MeshStandardMaterial({
     map: pbr("/textures/old_wood_floor_diff_1k.jpg", { repeat: 3, srgb: true }),
     roughnessMap: pbr("/textures/old_wood_floor_rough_1k.jpg", { repeat: 3 }),
-    color: 0x8a7a68, // darken the CC0 diffuse toward night
+    color: 0xc4ac92, // warm honey lift on the CC0 diffuse — late afternoon
     roughness: 1,
   });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), floorMat);
@@ -58,7 +58,7 @@ export function buildScene(scene) {
 
   const wallMat = new THREE.MeshStandardMaterial({
     map: pbr("/textures/painted_plaster_wall_diff_1k.jpg", { repeat: 2, srgb: true }),
-    color: 0x4a4550,
+    color: 0x7a6a5e,
     roughness: 0.95,
   });
   const backWall = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), wallMat);
@@ -85,7 +85,7 @@ export function buildScene(scene) {
   windowGroup.rotation.y = Math.PI / 2; // set into the left wall, facing the desk
   const night = new THREE.Mesh(
     new THREE.PlaneGeometry(0.82, 1.0),
-    new THREE.MeshBasicMaterial({ map: nightSkyTexture() })
+    new THREE.MeshBasicMaterial({ map: skyTexture() })
   );
   windowGroup.add(night);
   const frameMat = mat(0x241b13, { roughness: 0.6 });
@@ -104,17 +104,61 @@ export function buildScene(scene) {
   windowGroup.add(fT, fB, fL, fR, fMH, fMV, sill);
   root.add(windowGroup);
   // Soft dusk spill from the window pane into the room.
-  const windowGlow = new THREE.RectAreaLight(0xd8a37a, 1.6, 0.82, 1.0);
+  const windowGlow = new THREE.RectAreaLight(0xffc084, 3.0, 0.82, 1.0);
   windowGlow.position.set(-1.55, 1.5, 0.05);
   windowGlow.lookAt(0.4, 0.8, -0.1);
   root.add(windowGlow);
+
+  // Curtains framing the closed window — tied-back fabric with soft ripples.
+  const curtainMat = new THREE.MeshStandardMaterial({
+    color: 0xa8604a, roughness: 0.92, side: THREE.DoubleSide,
+  });
+  for (const cz of [-0.5, 0.6]) {
+    const cg = new THREE.PlaneGeometry(0.3, 1.36, 12, 20);
+    const cp = cg.attributes.position;
+    for (let i = 0; i < cp.count; i++) {
+      const cx = cp.getX(i);
+      const cy = cp.getY(i);
+      cp.setZ(i, Math.sin(cx * 34 + cy * 2) * 0.028 * (1 - Math.abs(cy) / 0.75));
+    }
+    cg.computeVertexNormals();
+    const curtain = new THREE.Mesh(cg, curtainMat);
+    curtain.rotation.y = Math.PI / 2;
+    curtain.position.set(-1.53, 1.42, cz);
+    curtain.castShadow = true;
+    curtain.receiveShadow = true;
+    root.add(curtain);
+  }
+  const rod = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.011, 0.011, 1.34, 12),
+    mat(0x4a3626, { roughness: 0.5, metalness: 0.2 })
+  );
+  rod.rotation.x = Math.PI / 2;
+  rod.position.set(-1.53, 2.13, 0.05);
+  root.add(rod);
+
+  // Potted plant (Poly Haven potted_plant_04, CC0) catching the sun.
+  gltfLoader.load(asset("/models/potted_plant_04/potted_plant_04_1k.gltf"), (g) => {
+    const plant = g.scene;
+    let pb = new THREE.Box3().setFromObject(plant);
+    const ps = pb.getSize(new THREE.Vector3());
+    plant.scale.setScalar(0.72 / ps.y);
+    pb = new THREE.Box3().setFromObject(plant);
+    const pc = pb.getCenter(new THREE.Vector3());
+    plant.position.set(1.06 - pc.x, -pb.min.y, -0.28 - pc.z);
+    plant.rotation.y = -0.6;
+    plant.traverse((o) => {
+      if (o.isMesh) o.castShadow = o.receiveShadow = true;
+    });
+    root.add(plant);
+  });
 
   // ================= Desk =================
   const deskMat = new THREE.MeshStandardMaterial({
     map: pbr("/textures/wood_table_001_diff_1k.jpg", { srgb: true }),
     normalMap: pbr("/textures/wood_table_001_nor_gl_1k.jpg"),
     roughnessMap: pbr("/textures/wood_table_001_rough_1k.jpg"),
-    color: 0xb59a7d,
+    color: 0xe8d0ae,
     roughness: 1,
   });
   const deskTop = box(1.7, 0.042, 0.85, deskMat);
@@ -219,7 +263,7 @@ export function buildScene(scene) {
   // Warm glow sphere sits inside the model's shade mouth.
   const bulb = new THREE.Mesh(
     new THREE.SphereGeometry(0.016, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xfff6e0 })
+    new THREE.MeshBasicMaterial({ color: 0xd8a878 }) // warm, barely-on glow
   );
   bulb.position.set(0, 0.375, -0.115);
   lampG.add(bulb);
@@ -239,7 +283,8 @@ export function buildScene(scene) {
   });
   root.add(lampG);
 
-  const lampLight = new THREE.SpotLight(0xffa95c, 5.5, 3.5, 1.0, 0.75, 1.2);
+  // Barely on — the sun is the key light now; the lamp just adds a warm kiss.
+  const lampLight = new THREE.SpotLight(0xffa95c, 1.3, 3.5, 1.0, 0.75, 1.2);
   lampLight.position.set(-0.51, TOP + 0.37, -0.19); // at the model's shade mouth
   lampLight.target.position.set(-0.1, TOP, 0.18);
   lampLight.castShadow = true;
@@ -516,26 +561,27 @@ export function buildScene(scene) {
     bookStack.add(book);
     stackY += b.s[1];
   });
-  // Top book: the Bardo Thodol, deep maroon with gold type. (Simulacra and
-  // Simulation is the green one beneath it.)
-  const bardoCover = bookCoverTexture({
-    title: "Bardo Thodol",
-    author: "The Tibetan Book of the Dead",
-    bg: "#4a2018",
-    fg: "#d8b46a",
+  // Top book comes from portfolio.json (`book`) — cover text is readable
+  // from the hero shot, so it's part of the personality.
+  const topBook = config.book ?? { title: "Gödel, Escher, Bach", author: "Douglas R. Hofstadter" };
+  const topCover = bookCoverTexture({
+    title: topBook.title,
+    author: topBook.author,
+    bg: "#cfc096",
+    fg: "#3a3226",
   });
-  const bardoMats = [
-    mat(0x4a2018), mat(0x4a2018),
-    new THREE.MeshStandardMaterial({ map: bardoCover, roughness: 0.6 }), // top face
-    mat(0x4a2018),
-    mat(0xd8cfb8, { roughness: 0.95 }), mat(0x4a2018),
+  const topBookMats = [
+    mat(0xcfc096), mat(0xcfc096),
+    new THREE.MeshStandardMaterial({ map: topCover, roughness: 0.6 }), // top face
+    mat(0xcfc096),
+    mat(0xd8cfb8, { roughness: 0.95 }), mat(0xcfc096),
   ];
-  const bardo = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.025, 0.205), bardoMats);
-  bardo.castShadow = true;
-  bardo.receiveShadow = true;
-  bardo.position.set(0.01, stackY + 0.0125, 0.01);
-  bardo.rotation.y = 0.35;
-  bookStack.add(bardo);
+  const topBookMesh = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.025, 0.205), topBookMats);
+  topBookMesh.castShadow = true;
+  topBookMesh.receiveShadow = true;
+  topBookMesh.position.set(0.01, stackY + 0.0125, 0.01);
+  topBookMesh.rotation.y = 0.35;
+  bookStack.add(topBookMesh);
   root.add(bookStack);
 
   // ================= Headphones =================
@@ -676,17 +722,18 @@ export function buildScene(scene) {
   root.add(shelf);
 
   // ================= Ambient / fill =================
-  const hemi = new THREE.HemisphereLight(0x4f4864, 0x241a14, 1.05);
+  const hemi = new THREE.HemisphereLight(0xa89684, 0x5a4634, 1.6);
   root.add(hemi);
-  // Dusk light streaming in from the side window — warm amber-mauve, raking
-  // across the desk from the left.
-  const moonLight = new THREE.DirectionalLight(0xc0937c, 1.5);
-  moonLight.position.set(-2.6, 1.9, 0.15);
-  moonLight.target.position.set(0.3, DESK_H, -0.1);
-  moonLight.castShadow = true;
-  moonLight.shadow.mapSize.set(1024, 1024);
-  moonLight.shadow.bias = -0.002;
-  root.add(moonLight, moonLight.target);
+  // The low golden-hour sun through the side window — long honey beams
+  // raking across the desk from the left.
+  const sunLight = new THREE.DirectionalLight(0xffc285, 3.4);
+  sunLight.position.set(-2.6, 1.25, 0.35);
+  sunLight.target.position.set(0.4, DESK_H, -0.15);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(2048, 2048);
+  sunLight.shadow.bias = -0.002;
+  sunLight.shadow.radius = 4;
+  root.add(sunLight, sunLight.target);
   // Whisper of warm bounce from the lamp pool back up at the scene
   const bounce = new THREE.PointLight(0xcc8855, 0.25, 2.0, 2);
   bounce.position.set(0, TOP + 0.3, 0.4);
@@ -702,8 +749,10 @@ export function buildScene(scene) {
   let dimTarget = 0;
   function animate(t) {
     dim += (dimTarget - dim) * 0.05;
-    const base = 5.5 + Math.sin(t * 1.7) * 0.15 + Math.sin(t * 7.3) * 0.05;
+    const base = 1.3 + Math.sin(t * 1.7) * 0.05 + Math.sin(t * 7.3) * 0.02;
     lampLight.intensity = base * (1 - dim * 0.55);
+    sunLight.intensity = 3.4 * (1 - dim * 0.45);
+    windowGlow.intensity = 3.0 * (1 - dim * 0.45);
     screenGlow.intensity = 0.25 + Math.sin(t * 11) * 0.015;
     const pulse = 0.5 + 0.5 * Math.sin(t * 2.4);
     leds.forEach((l) => l.color.setHSL(0.38, 1, 0.35 + pulse * 0.25));
