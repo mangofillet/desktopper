@@ -13,6 +13,8 @@ See plan.md for the full spec. Dev: `npm run dev` · verify: `node verify.mjs <p
 
 - [x] V2 golden-hour revamp (user-directed; v1 preserved as git tag `v1-dusk-study`) — late-afternoon light: sun directional 3.4 from side window + RectArea spill 3.0 + hemi 1.6, exposure 1.2, lamp barely-on (1.3). Window moved to left wall, closed, curtains + rod; poster (now "golden hour") on back wall; potted_plant_04 (CC0) floor right; brighter floor/desk/wall tints; camera maxDistance 2.1 (desk-locked); top book configurable via portfolio.json `book` (default GEB); Matrix reduced to ONE egg (boot line "wake up…") — wallpaper egg + matrix rain removed, sleep screen says "click to wake".
 
+- [x] V3 Nordic revamp (user-directed) — near-white plaster walls + pale laminate floor (laminate_floor_02) + whitewashed oak desk (oak_veneer_01 on RoundedBoxGeometry, splayed cream cylinder legs); walls pulled in close to the desk (back z -0.62, left x -1.15) instead of moving the desk (keeps all interaction anchors); double-hung sash window (no cross mullion), white frame, linen curtains; shelf removed; plant shrunk to 0.2m onto the desk by the lamp; poster lower/larger and customisable (portfolio.json `poster`: {title, subtitle} or {image}); camera maxDistance 1.9 (hero = max zoom-out); grain 0.009.
+
 Notes:
 - Playwright pixel-clicks are brittle (papers under headphones); use window.__dt dev hooks (focus/home/wearPhones/os).
 - Lighting balance point: lamp 5.5, RectArea screen 1.0, bloom threshold 0.85, exposure 1.0, hemi 0.85 evening.
