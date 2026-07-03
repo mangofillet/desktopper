@@ -108,10 +108,12 @@ export function buildScene(scene) {
   starBackdrop.position.set(0, 0.03, -1.75); // wide enough to never edge-out on a pan
   diorama.add(starBackdrop);
   // Shorter pines sitting low in the opening; three depths for parallax.
+  // Warm dusk-toned silhouettes: far layer catches a little sunset haze, near
+  // layers fall to near-black.
   const forestLayers = [
-    { z: -1.35, w: 5.4, h: 0.95, y: -0.34, color: "#243830", base: 350, spread: 42, step: 34, seed: 3 },
-    { z: -1.05, w: 4.6, h: 0.9, y: -0.36, color: "#152420", base: 350, spread: 52, step: 28, seed: 7 },
-    { z: -0.8, w: 3.8, h: 0.85, y: -0.38, color: "#0a1310", base: 350, spread: 64, step: 24, seed: 12 },
+    { z: -1.35, w: 5.4, h: 0.95, y: -0.34, color: "#4a3a42", base: 350, spread: 42, step: 34, seed: 3 },
+    { z: -1.05, w: 4.6, h: 0.9, y: -0.36, color: "#2a2029", base: 350, spread: 52, step: 28, seed: 7 },
+    { z: -0.8, w: 3.8, h: 0.85, y: -0.38, color: "#150f16", base: 350, spread: 64, step: 24, seed: 12 },
   ];
   for (const L of forestLayers) {
     const layer = new THREE.Mesh(
@@ -194,11 +196,11 @@ export function buildScene(scene) {
   }
 
   // Faint cool starlight spilling in over the desk from behind.
-  const windowGlow = new THREE.RectAreaLight(0x9ab4c8, 0.55, 1.5, 0.95);
+  const windowGlow = new THREE.RectAreaLight(0xd6a878, 0.7, 1.5, 0.95); // warm dusk spill
   windowGlow.position.set(0.05, 1.5, -0.6);
   windowGlow.lookAt(0.05, 0.7, 1.2);
   root.add(windowGlow);
-  const starDir = new THREE.DirectionalLight(0x9ab4d8, 0.3);
+  const starDir = new THREE.DirectionalLight(0xc09878, 0.35);
   starDir.position.set(0.1, 1.9, -2.4);
   starDir.target.position.set(0.05, DESK_H, 0.3);
   root.add(starDir, starDir.target);

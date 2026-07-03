@@ -257,53 +257,49 @@ export function steamTexture() {
 }
 
 export function skyTexture() {
-  // Deep lofi night: green-teal darkness full of stars over a forest
-  // silhouette. Wide format — the window now spans the wall behind the desk.
+  // Evening sky: deep indigo overhead melting through mauve into a warm coral
+  // sunset at the horizon, with a low sun glow and a few early stars up high.
   const [c, ctx] = makeCanvas(1024, 640);
   const g = ctx.createLinearGradient(0, 0, 0, 640);
-  g.addColorStop(0, "#050d0c");
-  g.addColorStop(0.55, "#0a1a16");
-  g.addColorStop(1, "#12241c");
+  g.addColorStop(0, "#20264a");
+  g.addColorStop(0.38, "#42425f");
+  g.addColorStop(0.62, "#6e5568");
+  g.addColorStop(0.82, "#b0745e");
+  g.addColorStop(0.95, "#dd9a5c");
+  g.addColorStop(1, "#e8b064");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 1024, 640);
   const r = rng(41);
-  // Star field: three size classes, soft glows, a few cross-flare sparklers.
-  for (let i = 0; i < 260; i++) {
+  // Low sun glow near the horizon, right of centre.
+  const sun = ctx.createRadialGradient(680, 500, 8, 680, 500, 220);
+  sun.addColorStop(0, "rgba(255,238,200,0.9)");
+  sun.addColorStop(0.25, "rgba(255,205,140,0.5)");
+  sun.addColorStop(1, "rgba(255,190,120,0)");
+  ctx.fillStyle = sun;
+  ctx.beginPath();
+  ctx.arc(680, 500, 220, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "rgba(255,245,215,0.85)";
+  ctx.beginPath();
+  ctx.arc(680, 500, 26, 0, Math.PI * 2);
+  ctx.fill();
+  // A few faint early stars, confined to the upper (darker) third.
+  for (let i = 0; i < 70; i++) {
     const x = r() * 1024;
-    const y = r() * 500;
+    const y = r() * 230;
+    ctx.globalAlpha = (0.2 + r() * 0.5) * (1 - y / 260);
     const s = r();
-    ctx.globalAlpha = 0.35 + r() * 0.65;
-    if (s > 0.965) {
-      // bright sparkler with glow + cross flare
-      const gl = ctx.createRadialGradient(x, y, 0, x, y, 14);
-      gl.addColorStop(0, "rgba(235,255,245,0.95)");
-      gl.addColorStop(0.3, "rgba(190,235,215,0.35)");
-      gl.addColorStop(1, "rgba(190,235,215,0)");
+    if (s > 0.94) {
+      const gl = ctx.createRadialGradient(x, y, 0, x, y, 4);
+      gl.addColorStop(0, "rgba(245,240,255,0.9)");
+      gl.addColorStop(1, "rgba(245,240,255,0)");
       ctx.fillStyle = gl;
       ctx.beginPath();
-      ctx.arc(x, y, 14, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(230,255,240,0.8)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y);
-      ctx.moveTo(x, y - 9); ctx.lineTo(x, y + 9);
-      ctx.stroke();
-      ctx.fillStyle = "#f4fff8";
-      ctx.beginPath();
-      ctx.arc(x, y, 1.8, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (s > 0.82) {
-      const gl = ctx.createRadialGradient(x, y, 0, x, y, 5);
-      gl.addColorStop(0, "rgba(220,245,230,0.9)");
-      gl.addColorStop(1, "rgba(220,245,230,0)");
-      ctx.fillStyle = gl;
-      ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      ctx.fillStyle = ["#d8ead8", "#c4dcd0", "#e8f4e4"][Math.floor(r() * 3)];
-      ctx.fillRect(x, y, 1.4, 1.4);
+      ctx.fillStyle = "#eae6f2";
+      ctx.fillRect(x, y, 1.3, 1.3);
     }
   }
   ctx.globalAlpha = 1;

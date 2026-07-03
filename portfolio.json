@@ -49,12 +49,14 @@
     {
       "name": "VECTRIS",
       "blurb": "3D neon Tetris with a global leaderboard — three.js, WebGL, way too much bloom.",
-      "url": "https://github.com/mangofillet"
+      "url": "https://github.com/mangofillet",
+      "status": "ongoing"
     },
     {
       "name": "Desktopper",
       "blurb": "This desk. A customisable 3D portfolio scene — fork it, swap portfolio.json, done.",
-      "url": "https://github.com/mangofillet"
+      "url": "https://github.com/mangofillet",
+      "status": "ongoing"
     }
   ],
   "headphonesTrack": {

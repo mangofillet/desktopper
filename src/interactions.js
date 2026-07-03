@@ -174,9 +174,13 @@ export function setupInteractions({
         ${l.linkedin ? `<li><a href="${l.linkedin}" target="_blank" rel="noopener">linkedin</a></li>` : ""}
       </ul>`;
     } else if (item.kind === "projects") {
-      html = `<h2>side projects</h2><ul>
-        ${config.projects.map((p) => `<li><a href="${p.url}" target="_blank" rel="noopener">${p.name}</a><div class="blurb">${p.blurb}</div></li>`).join("")}
-      </ul>`;
+      const li = (p) =>
+        `<li><a href="${p.url}" target="_blank" rel="noopener">${p.name}</a><div class="blurb">${p.blurb}</div></li>`;
+      const ongoing = config.projects.filter((p) => (p.status || "ongoing") !== "planned");
+      const planned = config.projects.filter((p) => p.status === "planned");
+      html = `<h2>ongoing &amp; planned projects</h2>
+        ${ongoing.length ? `<div class="meta">ongoing</div><ul>${ongoing.map(li).join("")}</ul>` : ""}
+        ${planned.length ? `<div class="meta">planned</div><ul>${planned.map(li).join("")}</ul>` : ""}`;
     } else if (item.kind === "cv") {
       html = `<h2>curriculum vitae</h2>
         <p>The full academic record — positions, publications, teaching.</p>

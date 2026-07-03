@@ -171,19 +171,26 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
   function renderSel() {
     if (!selected) { selBox.classList.remove("show"); return; }
     selBox.classList.add("show");
-    const deg = Math.round((selected.object.rotation.y * 180) / Math.PI);
+    const rot = selected.object.rotation;
+    const deg = (v) => Math.round((v * 180) / Math.PI);
+    const axisRow = (label, ax) =>
+      `<label>${label}: <span class="rv-${ax}">${deg(rot[ax])}°</span></label>
+       <input type="range" data-ax="${ax}" min="-180" max="180" value="${deg(rot[ax])}">`;
     selBox.innerHTML = `
       <div class="name">Selected: ${selected.id}</div>
-      <label>Rotate: <span class="rv">${deg}°</span></label>
-      <input type="range" min="-180" max="180" value="${deg}" />
+      ${axisRow("Tilt (X)", "x")}
+      ${axisRow("Spin (Y)", "y")}
+      ${axisRow("Roll (Z)", "z")}
       <div style="margin-top:8px; display:flex; gap:6px;">
         <button class="mini" data-a="reset-pos">Reset position</button>
       </div>`;
-    const range = selBox.querySelector("input");
-    range.addEventListener("input", () => {
-      selected.object.rotation.y = (range.value * Math.PI) / 180;
-      selBox.querySelector(".rv").textContent = range.value + "°";
-      persist(selected);
+    ["x", "y", "z"].forEach((ax) => {
+      const range = selBox.querySelector(`input[data-ax="${ax}"]`);
+      range.addEventListener("input", () => {
+        selected.object.rotation[ax] = (range.value * Math.PI) / 180;
+        selBox.querySelector(`.rv-${ax}`).textContent = range.value + "°";
+        persist(selected);
+      });
     });
     selBox.querySelector('[data-a="reset-pos"]').addEventListener("click", () => {
       if (!selected.orig) return;
@@ -322,16 +329,23 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
           (v) => (p.year = v), (v) => (p.abstract = v), (v) => (p.url = v));
       });
     } else if (tab === "projects") {
-      html = (config.projects || [])
-        .map(
-          (p, i) => `<div class="row" data-i="${i}">
+      html = `<h4>Ongoing &amp; Planned Projects</h4>`;
+      html += (config.projects || [])
+        .map((p, i) => {
+          const st = p.status || "ongoing";
+          return `<div class="row" data-i="${i}">
             <div class="rowhead"><b>${p.name || "untitled"}</b>
               <button class="mini del" data-del="${i}">✕</button></div>
             ${field("Name", p.name)}
+            <label>Status</label>
+            <select data-status="${i}">
+              <option value="ongoing"${st === "ongoing" ? " selected" : ""}>ongoing</option>
+              <option value="planned"${st === "planned" ? " selected" : ""}>planned</option>
+            </select>
             <label>Blurb</label><textarea data-bind>${p.blurb ?? ""}</textarea>
             ${field("URL", p.url)}
-          </div>`
-        )
+          </div>`;
+        })
         .join("");
       html += `<button class="mini add" data-add="project">+ add project</button>`;
       binders = [];
@@ -401,6 +415,12 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
           else config.photoImage = data;
           saveConfig();
         });
+      });
+    });
+    tabBody.querySelectorAll("[data-status]").forEach((sel) => {
+      sel.addEventListener("change", () => {
+        config.projects[+sel.dataset.status].status = sel.value;
+        saveConfig();
       });
     });
     tabBody.querySelectorAll("[data-del]").forEach((b) => {
