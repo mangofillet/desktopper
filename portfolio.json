@@ -10,6 +10,7 @@
   },
   "cvUrl": "/cv.pdf",
   "book": { "title": "Gödel, Escher, Bach", "author": "Douglas R. Hofstadter" },
+  "poster": { "title": "golden hour", "subtitle": "slow light / good work" },
   "papers": [
     {
       "title": "Emergent Structure in Deep Latent Spaces",

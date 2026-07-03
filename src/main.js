@@ -34,7 +34,7 @@ controls.target.set(0, 0.82, -0.1);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.minDistance = 0.6;
-controls.maxDistance = 2.1; // desk-locked: never zoom past the cozy bubble
+controls.maxDistance = 1.9; // desk-locked: the hero shot IS max zoom-out
 controls.minPolarAngle = 0.9;
 controls.maxPolarAngle = 1.45;
 controls.minAzimuthAngle = -0.9;

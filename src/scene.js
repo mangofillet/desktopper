@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import {
   paperTexture,
   bookCoverTexture,
@@ -46,9 +47,10 @@ export function buildScene(scene) {
 
   // ================= Room =================
   const floorMat = new THREE.MeshStandardMaterial({
-    map: pbr("/textures/old_wood_floor_diff_1k.jpg", { repeat: 3, srgb: true }),
-    roughnessMap: pbr("/textures/old_wood_floor_rough_1k.jpg", { repeat: 3 }),
-    color: 0xc4ac92, // warm honey lift on the CC0 diffuse — late afternoon
+    map: pbr("/textures/laminate_floor_02_diff_1k.jpg", { repeat: 3, srgb: true }),
+    normalMap: pbr("/textures/laminate_floor_02_nor_gl_1k.jpg", { repeat: 3 }),
+    roughnessMap: pbr("/textures/laminate_floor_02_rough_1k.jpg", { repeat: 3 }),
+    color: 0xf0eae0, // pale Nordic laminate, close to white
     roughness: 1,
   });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), floorMat);
@@ -58,37 +60,38 @@ export function buildScene(scene) {
 
   const wallMat = new THREE.MeshStandardMaterial({
     map: pbr("/textures/painted_plaster_wall_diff_1k.jpg", { repeat: 2, srgb: true }),
-    color: 0x7a6a5e,
+    color: 0xe8e3da, // warm off-white plaster
     roughness: 0.95,
   });
+  // Walls pulled in close — the desk sits snug against them now.
   const backWall = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), wallMat);
-  backWall.position.set(0, 2, -0.95);
+  backWall.position.set(0, 2, -0.62);
   backWall.receiveShadow = true;
   root.add(backWall);
   const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), wallMat.clone());
   leftWall.rotation.y = Math.PI / 2;
-  leftWall.position.set(-1.6, 2, 0);
+  leftWall.position.set(-1.15, 2, 0);
   leftWall.receiveShadow = true;
   root.add(leftWall);
 
-  // Skirting board along both walls
-  const skirtMat = mat(0x2c2620, { roughness: 0.7 });
+  // Skirting board along both walls — crisp white, Nordic
+  const skirtMat = mat(0xf2efe8, { roughness: 0.6 });
   const skirtB = box(8, 0.09, 0.02, skirtMat);
-  skirtB.position.set(0, 0.045, -0.94);
+  skirtB.position.set(0, 0.045, -0.61);
   const skirtL = box(0.02, 0.09, 8, skirtMat);
-  skirtL.position.set(-1.59, 0.045, 0);
+  skirtL.position.set(-1.14, 0.045, 0);
   root.add(skirtB, skirtL);
 
-  // ================= Window (dusk sky + moon), on the side wall =================
+  // ================= Window: double-hung sash, closed, side wall =================
   const windowGroup = new THREE.Group();
-  windowGroup.position.set(-1.57, 1.5, 0.05);
+  windowGroup.position.set(-1.12, 1.5, 0.05);
   windowGroup.rotation.y = Math.PI / 2; // set into the left wall, facing the desk
-  const night = new THREE.Mesh(
+  const sky = new THREE.Mesh(
     new THREE.PlaneGeometry(0.82, 1.0),
     new THREE.MeshBasicMaterial({ map: skyTexture() })
   );
-  windowGroup.add(night);
-  const frameMat = mat(0x241b13, { roughness: 0.6 });
+  windowGroup.add(sky);
+  const frameMat = mat(0xf2efe8, { roughness: 0.5 }); // white-painted timber
   const fT = box(0.92, 0.06, 0.07, frameMat);
   fT.position.y = 0.53;
   const fB = box(0.92, 0.06, 0.07, frameMat);
@@ -97,21 +100,32 @@ export function buildScene(scene) {
   fL.position.x = -0.44;
   const fR = fL.clone();
   fR.position.x = 0.44;
-  const fMH = box(0.86, 0.035, 0.05, frameMat);
-  const fMV = box(0.035, 1.0, 0.05, frameMat);
-  const sill = box(1.0, 0.035, 0.12, frameMat);
-  sill.position.set(0, -0.575, 0.04);
-  windowGroup.add(fT, fB, fL, fR, fMH, fMV, sill);
+  // Meeting rail where the two sashes overlap — no cross mullion.
+  const rail = box(0.86, 0.045, 0.06, frameMat);
+  rail.position.set(0, 0, 0.012);
+  // Lower sash sits proud of the upper one, with a small lift handle.
+  const lowerSash = new THREE.Group();
+  for (const [w, h, px, py] of [[0.86, 0.035, 0, -0.485], [0.035, 0.5, -0.415, -0.25], [0.035, 0.5, 0.415, -0.25]]) {
+    const s = box(w, h, 0.045, frameMat);
+    s.position.set(px, py, 0.022);
+    lowerSash.add(s);
+  }
+  const sashLift = box(0.1, 0.018, 0.02, mat(0xb8b2a6, { metalness: 0.4, roughness: 0.4 }));
+  sashLift.position.set(0, -0.02, 0.05);
+  lowerSash.add(sashLift);
+  const sill = box(1.0, 0.035, 0.13, frameMat);
+  sill.position.set(0, -0.575, 0.05);
+  windowGroup.add(fT, fB, fL, fR, rail, lowerSash, sill);
   root.add(windowGroup);
-  // Soft dusk spill from the window pane into the room.
+  // Soft sun spill from the pane into the room.
   const windowGlow = new THREE.RectAreaLight(0xffc084, 3.0, 0.82, 1.0);
-  windowGlow.position.set(-1.55, 1.5, 0.05);
+  windowGlow.position.set(-1.1, 1.5, 0.05);
   windowGlow.lookAt(0.4, 0.8, -0.1);
   root.add(windowGlow);
 
   // Curtains framing the closed window — tied-back fabric with soft ripples.
   const curtainMat = new THREE.MeshStandardMaterial({
-    color: 0xa8604a, roughness: 0.92, side: THREE.DoubleSide,
+    color: 0xcfc4b2, roughness: 0.92, side: THREE.DoubleSide, // soft linen
   });
   for (const cz of [-0.5, 0.6]) {
     const cg = new THREE.PlaneGeometry(0.3, 1.36, 12, 20);
@@ -124,7 +138,7 @@ export function buildScene(scene) {
     cg.computeVertexNormals();
     const curtain = new THREE.Mesh(cg, curtainMat);
     curtain.rotation.y = Math.PI / 2;
-    curtain.position.set(-1.53, 1.42, cz);
+    curtain.position.set(-1.08, 1.42, cz);
     curtain.castShadow = true;
     curtain.receiveShadow = true;
     root.add(curtain);
@@ -134,18 +148,18 @@ export function buildScene(scene) {
     mat(0x4a3626, { roughness: 0.5, metalness: 0.2 })
   );
   rod.rotation.x = Math.PI / 2;
-  rod.position.set(-1.53, 2.13, 0.05);
+  rod.position.set(-1.08, 2.13, 0.05);
   root.add(rod);
 
-  // Potted plant (Poly Haven potted_plant_04, CC0) catching the sun.
+  // Small potted plant (Poly Haven potted_plant_04, CC0) on the desk corner.
   gltfLoader.load(asset("/models/potted_plant_04/potted_plant_04_1k.gltf"), (g) => {
     const plant = g.scene;
     let pb = new THREE.Box3().setFromObject(plant);
     const ps = pb.getSize(new THREE.Vector3());
-    plant.scale.setScalar(0.72 / ps.y);
+    plant.scale.setScalar(0.2 / ps.y);
     pb = new THREE.Box3().setFromObject(plant);
     const pc = pb.getCenter(new THREE.Vector3());
-    plant.position.set(1.06 - pc.x, -pb.min.y, -0.28 - pc.z);
+    plant.position.set(-0.74 - pc.x, TOP - pb.min.y, -0.3 - pc.z);
     plant.rotation.y = -0.6;
     plant.traverse((o) => {
       if (o.isMesh) o.castShadow = o.receiveShadow = true;
@@ -154,24 +168,37 @@ export function buildScene(scene) {
   });
 
   // ================= Desk =================
+  // Nordic desk: pale oak slab with softly rounded edges, light tapered legs.
   const deskMat = new THREE.MeshStandardMaterial({
-    map: pbr("/textures/wood_table_001_diff_1k.jpg", { srgb: true }),
-    normalMap: pbr("/textures/wood_table_001_nor_gl_1k.jpg"),
-    roughnessMap: pbr("/textures/wood_table_001_rough_1k.jpg"),
-    color: 0xe8d0ae,
+    map: pbr("/textures/oak_veneer_01_diff_1k.jpg", { srgb: true }),
+    normalMap: pbr("/textures/oak_veneer_01_nor_gl_1k.jpg"),
+    roughnessMap: pbr("/textures/oak_veneer_01_rough_1k.jpg"),
+    color: 0xfff4e4, // scrubbed near-white oak
     roughness: 1,
   });
-  const deskTop = box(1.7, 0.042, 0.85, deskMat);
+  const deskTop = new THREE.Mesh(
+    new RoundedBoxGeometry(1.7, 0.042, 0.85, 3, 0.012),
+    deskMat
+  );
+  deskTop.castShadow = true;
+  deskTop.receiveShadow = true;
   deskTop.position.set(0, DESK_H, 0);
   root.add(deskTop);
-  const legMat = mat(0x2e2118, { roughness: 0.65 });
-  for (const [x, z] of [[-0.78, -0.36], [0.78, -0.36], [-0.78, 0.36], [0.78, 0.36]]) {
-    const leg = box(0.055, DESK_H - 0.02, 0.055, legMat);
+  const legMat = mat(0xd8c4a4, { roughness: 0.6 });
+  for (const [x, z] of [[-0.74, -0.34], [0.74, -0.34], [-0.74, 0.34], [0.74, 0.34]]) {
+    const leg = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.02, 0.027, DESK_H - 0.02, 20),
+      legMat
+    );
     leg.position.set(x, (DESK_H - 0.02) / 2, z);
+    leg.rotation.z = x < 0 ? 0.05 : -0.05; // gentle mid-century splay
+    leg.rotation.x = z < 0 ? -0.05 : 0.05;
+    leg.castShadow = true;
+    leg.receiveShadow = true;
     root.add(leg);
   }
-  const apron = box(1.55, 0.07, 0.02, legMat);
-  apron.position.set(0, DESK_H - 0.07, -0.38);
+  const apron = box(1.45, 0.06, 0.02, legMat);
+  apron.position.set(0, DESK_H - 0.06, -0.34);
   root.add(apron);
 
   // ================= Laptop (Poly Haven classic_laptop, CC0) =================
@@ -677,49 +704,24 @@ export function buildScene(scene) {
   strip.add(stripLed);
   root.add(strip);
 
-  // ================= Poster & shelf (left wall) =================
+  // ================= Poster (back wall, customisable) =================
+  // portfolio.json `poster` supports { image } (a URL/path to your own art)
+  // or { title, subtitle } for the generated print.
   const poster = new THREE.Group();
-  poster.position.set(-0.45, 1.55, -0.935); // back wall, where the window was
-  const posterSheet = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.42, 0.594),
-    new THREE.MeshStandardMaterial({ map: posterTexture(), roughness: 0.85 })
-  );
+  poster.position.set(-0.45, 1.32, -0.605); // lower, over the desk's left half
+  const posterMat = new THREE.MeshStandardMaterial({
+    map: posterTexture(config.poster ?? {}),
+    roughness: 0.85,
+  });
+  if (config.poster?.image) {
+    posterMat.map = pbr(config.poster.image, { srgb: true });
+  }
+  const posterSheet = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.735), posterMat);
   posterSheet.receiveShadow = true;
-  const pFrame = box(0.46, 0.634, 0.015, mat(0x1e1a16, { roughness: 0.5 }));
+  const pFrame = box(0.56, 0.775, 0.015, mat(0x3a352e, { roughness: 0.5 }));
   pFrame.position.z = -0.009;
   poster.add(pFrame, posterSheet);
   root.add(poster);
-
-  const shelf = new THREE.Group();
-  shelf.position.set(-1.57, 1.25, -0.68); // left wall, clear of the window
-  shelf.rotation.y = Math.PI / 2;
-  const plank = box(0.55, 0.022, 0.14, mat(0x4a3220, { roughness: 0.6 }));
-  shelf.add(plank);
-  // little row of books
-  const shelfBookColors = [0x6e3b34, 0x2f4858, 0x8a7440, 0x4a5a43, 0x3a3a52];
-  let bx = -0.2;
-  shelfBookColors.forEach((c, i) => {
-    const h = 0.11 + (i % 3) * 0.012;
-    const b = box(0.022, h, 0.1, mat(c, { roughness: 0.8 }));
-    b.position.set(bx, h / 2 + 0.011, 0);
-    b.rotation.z = i === shelfBookColors.length - 1 ? -0.18 : 0;
-    shelf.add(b);
-    bx += 0.026;
-  });
-  // tiny plant
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.022, 0.045, 16), mat(0xb56a4a, { roughness: 0.7 }));
-  pot.position.set(0.16, 0.034, 0);
-  pot.castShadow = true;
-  shelf.add(pot);
-  for (let i = 0; i < 5; i++) {
-    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.07, 6), mat(0x3f6a3a, { roughness: 0.8 }));
-    const a = (i / 5) * Math.PI * 2;
-    leaf.position.set(0.16 + Math.cos(a) * 0.012, 0.09, Math.sin(a) * 0.012);
-    leaf.rotation.z = Math.cos(a) * 0.5;
-    leaf.rotation.x = Math.sin(a) * 0.5;
-    shelf.add(leaf);
-  }
-  root.add(shelf);
 
   // ================= Ambient / fill =================
   const hemi = new THREE.HemisphereLight(0xa89684, 0x5a4634, 1.6);

@@ -116,7 +116,7 @@ function wrapTextCentered(ctx, text, cx, y, maxW, lineH) {
   return y;
 }
 
-export function posterTexture() {
+export function posterTexture({ title = "golden hour", subtitle = "slow light / good work" } = {}) {
   const [c, ctx] = makeCanvas(420, 594);
   // Warm swiss-style poster: big low sun over hills, one line of type.
   const g = ctx.createLinearGradient(0, 0, 0, 594);
@@ -156,10 +156,10 @@ export function posterTexture() {
   ctx.fillStyle = "#4a3220";
   ctx.font = "28px Georgia, serif";
   ctx.textAlign = "left";
-  ctx.fillText("golden hour", 40, 528);
+  ctx.fillText(title, 40, 528);
   ctx.font = "12px monospace";
   ctx.fillStyle = "#6a4a34";
-  ctx.fillText("slow light / good work", 40, 552);
+  ctx.fillText(subtitle, 40, 552);
   return toTexture(c);
 }
 

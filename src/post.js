@@ -35,7 +35,7 @@ const GradeShader = {
       // faint warm lift in the shadows keeps blacks from going dead
       col.rgb += vec3(0.012, 0.008, 0.006) * (1.0 - vig);
       // grain
-      col.rgb += (hash(vUv * 40.0) - 0.5) * 0.012;
+      col.rgb += (hash(vUv * 40.0) - 0.5) * 0.009;
       gl_FragColor = col;
     }`,
 };
