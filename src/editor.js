@@ -100,7 +100,7 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
     <footer>
       <button class="apply" data-a="apply">Apply changes</button>
       <button class="exp" data-a="export">Export JSON</button>
-      <button class="reset" data-a="reset">Reset all</button>
+      <button class="reset" data-a="reset">Revert to original</button>
       <div class="note">Move/rotate is live · text &amp; images apply on “Apply”.</div>
     </footer>`;
   document.body.appendChild(panel);
@@ -405,7 +405,10 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
     else if (a === "apply") location.reload();
     else if (a === "export") exportConfig();
     else if (a === "reset") {
-      if (confirm("Reset all edits (content + layout) to the original?")) { resetAll(); location.reload(); }
+      if (confirm("Revert everything (content + object positions) back to the original? This clears all your edits.")) {
+        resetAll();
+        location.reload();
+      }
     }
   });
 

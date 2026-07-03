@@ -310,6 +310,39 @@ export function skyTexture() {
   return toTexture(c);
 }
 
+export function frostTexture() {
+  // Milky, softly-mottled translucent glass. Translucency is baked into the
+  // canvas alpha so it obscures the stars behind like real frosted glass.
+  const [c, ctx] = makeCanvas(256, 320);
+  ctx.clearRect(0, 0, 256, 320);
+  const r = rng(5);
+  // base milk — cool + light so the pane stays clearly translucent at night
+  ctx.fillStyle = "rgba(178,196,200,0.7)";
+  ctx.fillRect(0, 0, 256, 320);
+  // soft cloudy blooms
+  for (let i = 0; i < 40; i++) {
+    const x = r() * 256, y = r() * 320, rad = 20 + r() * 60;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, rad);
+    const a = 0.05 + r() * 0.12;
+    g.addColorStop(0, `rgba(240,248,250,${a})`);
+    g.addColorStop(1, "rgba(240,248,250,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, rad, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // faint vertical condensation streaks
+  for (let i = 0; i < 18; i++) {
+    ctx.globalAlpha = 0.04 + r() * 0.05;
+    ctx.fillStyle = "#c4d2d6";
+    ctx.fillRect(r() * 256, 0, 1 + r() * 2, 320);
+  }
+  ctx.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 export function forestLayerTexture({ seed = 1, color = "#0b1410", base = 300, spread = 90, step = 26 } = {}) {
   // A transparent band of pine silhouettes for a parallax depth layer.
   const [c, ctx] = makeCanvas(1024, 512);

@@ -9,6 +9,7 @@ import {
   stickyTexture,
   skyTexture,
   forestLayerTexture,
+  frostTexture,
   steamTexture,
 } from "./textures.js";
 import { createOS } from "./os.js";
@@ -143,7 +144,55 @@ export function buildScene(scene) {
   const sill = box(1.46, 0.035, 0.14, frameMat);
   sill.position.set(-0.11, -0.545, 0.05);
   windowGroup.add(fT, fB, fL, fR, mullion, sill);
+  // Left pane frosted (the openable one) — milky glass over that half.
+  const frostPane = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.6, 0.95),
+    new THREE.MeshBasicMaterial({
+      map: frostTexture(), transparent: true, opacity: 0.3, depthWrite: false,
+    })
+  );
+  frostPane.position.set(-0.43, 0, 0.02);
+  windowGroup.add(frostPane);
+  // a little latch on the frosted (opening) sash
+  const latch = box(0.03, 0.012, 0.02, mat(0xb8b2a6, { metalness: 0.4, roughness: 0.4 }));
+  latch.position.set(-0.13, 0, 0.05);
+  windowGroup.add(latch);
   root.add(windowGroup);
+
+  // ---- Curtains flanking the window (soft linen drapes) ----
+  const curtainMat = new THREE.MeshStandardMaterial({
+    color: 0xc7b79a, roughness: 0.9, side: THREE.DoubleSide,
+  });
+  function curtainPanel(wx, flip) {
+    const g = new THREE.PlaneGeometry(0.42, 1.16, 14, 20);
+    const pos = g.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const px = pos.getX(i);
+      const fold = Math.sin(px * 20 + (flip ? 1.5 : 0)) * 0.03 + Math.sin(px * 44) * 0.01;
+      pos.setZ(i, fold);
+    }
+    g.computeVertexNormals();
+    const m = new THREE.Mesh(g, curtainMat);
+    m.position.set(wx, 1.5, -0.53);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    root.add(m);
+  }
+  curtainPanel(-0.92, false);
+  curtainPanel(0.78, true);
+  const crod = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.013, 0.013, 2.05, 12),
+    mat(0x3a2c1e, { metalness: 0.3, roughness: 0.5 })
+  );
+  crod.rotation.z = Math.PI / 2;
+  crod.position.set(-0.07, 2.13, -0.52);
+  root.add(crod);
+  for (const fx of [-1.09, 0.95]) {
+    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 12), mat(0x3a2c1e, { metalness: 0.3, roughness: 0.5 }));
+    finial.position.set(fx, 2.13, -0.52);
+    root.add(finial);
+  }
+
   // Faint cool starlight spilling in over the desk from behind.
   const windowGlow = new THREE.RectAreaLight(0x9ab4c8, 0.55, 1.5, 0.95);
   windowGlow.position.set(0.05, 1.5, -0.6);

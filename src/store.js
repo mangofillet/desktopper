@@ -9,6 +9,17 @@ const LS_EDITOR = "desktopper.editor";
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
+// ?reset clears all saved edits (content + layout) before anything reads them,
+// so the page loads exactly like the original.
+try {
+  if (new URLSearchParams(location.search).has("reset")) {
+    localStorage.removeItem(LS_CONFIG);
+    localStorage.removeItem(LS_LAYOUT);
+  }
+} catch (e) {
+  /* ignore */
+}
+
 // Merged config: saved override wins if present, else the shipped base.
 let config = clone(base);
 try {
