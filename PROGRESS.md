@@ -9,7 +9,7 @@ See plan.md for the full spec. Dev: `npm run dev` · verify: `node verify.mjs <p
 - [x] M5 Audio — user tracks in Assets/ → public/audio/ (gitignored, copyright). Headphones channel + speakers playlist cycle (toast controls), WebAudio brown-noise window ambience after first gesture.
 - [x] M6 Config — everything reads portfolio.json; asset() resolves paths against BASE_URL; placeholder cv.pdf generated (make-cv.mjs).
 - [x] M7 Real CC0 models — Poly Haven classic_laptop (screen node rotated to ~93°, display plane parented into screen mesh local space, 4:3) + desk_lamp_arm_01 (yaw -2.0; head is local -z — found via lamp-sweep.mjs).
-- [ ] Deploy — repo + Pages workflow written; push + live verify in progress.
+- [x] Deploy — https://github.com/mangofillet/desktopper → https://mangofillet.github.io/desktopper/ (Pages via Actions; verified live, no console errors). Music gitignored (copyright) so the deployed site plays no tracks until rights-cleared files are added.
 
 Notes:
 - Playwright pixel-clicks are brittle (papers under headphones); use window.__dt dev hooks (focus/home/wearPhones/os).
