@@ -173,7 +173,7 @@ export function buildScene(scene) {
     }
     g.computeVertexNormals();
     const m = new THREE.Mesh(g, curtainMat);
-    m.position.set(wx, 1.5, -0.53);
+    m.position.set(wx, 1.56, -0.45); // in front of the sill, not through it
     m.castShadow = true;
     m.receiveShadow = true;
     root.add(m);
@@ -185,11 +185,11 @@ export function buildScene(scene) {
     mat(0x3a2c1e, { metalness: 0.3, roughness: 0.5 })
   );
   crod.rotation.z = Math.PI / 2;
-  crod.position.set(-0.07, 2.13, -0.52);
+  crod.position.set(-0.07, 2.16, -0.44);
   root.add(crod);
   for (const fx of [-1.09, 0.95]) {
     const finial = new THREE.Mesh(new THREE.SphereGeometry(0.022, 12, 12), mat(0x3a2c1e, { metalness: 0.3, roughness: 0.5 }));
-    finial.position.set(fx, 2.13, -0.52);
+    finial.position.set(fx, 2.16, -0.44);
     root.add(finial);
   }
 
@@ -428,7 +428,10 @@ export function buildScene(scene) {
   root.add(lampG);
 
   // The lamp is the key light again — it's night out there.
-  const lampLight = new THREE.SpotLight(0xffa95c, 4.6, 3.5, 1.0, 0.75, 1.2);
+  // Narrower cone: a wide (114°) cone wrecks the shadow-map precision, letting
+  // the lamp bleed through the desk onto the floor. 0.62 rad keeps a warm pool
+  // on the desk while the desk cleanly shadows everything below.
+  const lampLight = new THREE.SpotLight(0xffa95c, 4.2, 3.2, 0.62, 0.7, 1.4);
   lampLight.position.set(-0.28, TOP + 0.36, -0.15); // at the shade mouth
   lampLight.target.position.set(0.02, TOP, 0.14);
   lampLight.castShadow = true;
@@ -887,22 +890,29 @@ export function buildScene(scene) {
   // ================= Ambient / fill =================
   // Room tone lifted so the palette (wood, walls, book spines) actually reads
   // while the night mood holds.
-  const hemi = new THREE.HemisphereLight(0x74806a, 0x4a3c2c, 1.75);
+  const hemi = new THREE.HemisphereLight(0x74806a, 0x2c2820, 1.55);
   root.add(hemi);
   // A soft moonlit ambient wash from the window side, fills the darker corners.
+  // It casts shadows so the desk properly blocks it from the floor (otherwise
+  // the fill leaks through and lights an odd pool under the table).
   const roomFill = new THREE.DirectionalLight(0x9db3c4, 0.82);
   roomFill.position.set(0.4, 1.6, 2.2);
   roomFill.target.position.set(-0.4, DESK_H, -0.2);
+  roomFill.castShadow = true;
+  roomFill.shadow.mapSize.set(1024, 1024);
+  roomFill.shadow.camera.near = 0.5;
+  roomFill.shadow.camera.far = 8;
+  roomFill.shadow.camera.left = -3;
+  roomFill.shadow.camera.right = 3;
+  roomFill.shadow.camera.top = 3;
+  roomFill.shadow.camera.bottom = -3;
+  roomFill.shadow.bias = -0.0015;
   root.add(roomFill, roomFill.target);
   // Second gentle fill from the left so the bookshelf side isn't crushed.
   const leftFill = new THREE.DirectionalLight(0xb0a488, 0.36);
   leftFill.position.set(-2.0, 1.5, 1.0);
   leftFill.target.position.set(0, DESK_H, 0);
   root.add(leftFill, leftFill.target);
-  // Whisper of warm bounce from the lamp pool back up at the scene
-  const bounce = new THREE.PointLight(0xcc8855, 0.4, 2.2, 2);
-  bounce.position.set(0, TOP + 0.3, 0.4);
-  root.add(bounce);
 
   // ================= OS screen refresh =================
   // (folded into animate below so it shares the clock)
