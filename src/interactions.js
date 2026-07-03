@@ -78,7 +78,7 @@ function easeInOutCubic(x) {
 }
 
 export function setupInteractions({
-  renderer, camera, controls, interactables, config, setFocusDim, os, screenMesh,
+  renderer, camera, controls, interactables, config, setFocusDim, setSpeakersOn, os, screenMesh,
 }) {
   // ---------- DOM ----------
   const style = document.createElement("style");
@@ -220,32 +220,16 @@ export function setupInteractions({
     toast.classList.remove("show");
   }
 
-  // ---------- speakers: cycle the playlist ----------
-  let spkIndex = -1;
-  let spkPlaying = false;
-  function pokeSpeakers() {
-    const tracks = config.tracks ?? [];
-    if (!tracks.length) {
-      showCaption("no records on the shelf yet");
-      return;
-    }
-    if (phonesT > 0 || phonesDir > 0) takeOffPhones();
-    spkIndex = (spkIndex + 1) % tracks.length;
-    const tr = tracks[spkIndex];
-    spkPlaying = playTrack(tr, "speakers");
-    toast.innerHTML =
-      `♪ ${tr.title}${tr.artist ? " — " + tr.artist : ""}` +
-      (spkPlaying ? "" : ` <span class="hint">(no track file yet)</span>`) +
-      ` <span class="hint">· click speaker for next · click here to stop</span>`;
-    toast.classList.add("show");
+  // ---------- speakers: an on/off prop (drives laptop media audio later) ----------
+  let speakersOn = false;
+  function toggleSpeakers() {
+    speakersOn = !speakersOn;
+    setSpeakersOn?.(speakersOn);
+    showCaption(speakersOn ? "speakers on" : "speakers off");
   }
 
   toast.addEventListener("click", () => {
     takeOffPhones();
-    if (spkPlaying) {
-      stopTrack({ channel: "speakers" });
-      spkPlaying = false;
-    }
     toast.classList.remove("show");
   });
 
@@ -325,7 +309,7 @@ export function setupInteractions({
     }
     if (hovered?.id.startsWith("speaker")) {
       hovered.wobbleT = 0;
-      pokeSpeakers();
+      toggleSpeakers();
       return;
     }
     // While on the laptop, clicks land on the OS screen.

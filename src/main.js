@@ -13,7 +13,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 1.14;
 app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -33,21 +33,23 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0.82, -0.1);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-controls.minDistance = 0.6;
+controls.minDistance = 0.42; // just shy of sitting at the desk
 controls.maxDistance = 1.9; // desk-locked: the hero shot IS max zoom-out
 controls.minPolarAngle = 0.9;
 controls.maxPolarAngle = 1.45;
-controls.minAzimuthAngle = -0.9;
-controls.maxAzimuthAngle = 0.9;
+controls.minAzimuthAngle = -0.42; // don't swing far enough left to clip the wall
+controls.maxAzimuthAngle = 0.78;
 controls.enablePan = false;
 
-const { animate: animateScene, interactables, setFocusDim, os, screen } =
+const { animate: animateScene, interactables, setFocusDim, setSpeakersOn, os, screen } =
   buildScene(scene);
 const post = setupPost(renderer, scene, camera);
 const interactions = setupInteractions({
-  renderer, camera, controls, interactables, config, setFocusDim,
+  renderer, camera, controls, interactables, config, setFocusDim, setSpeakersOn,
   os, screenMesh: screen,
 });
+
+if (import.meta.env?.DEV) window.__diag = { scene, camera, screen, interactables, THREE };
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;

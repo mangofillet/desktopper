@@ -35,13 +35,20 @@ const GradeShader = {
       // faint warm lift in the shadows keeps blacks from going dead
       col.rgb += vec3(0.012, 0.008, 0.006) * (1.0 - vig);
       // grain
-      col.rgb += (hash(vUv * 40.0) - 0.5) * 0.009;
+      col.rgb += (hash(vUv * 40.0) - 0.5) * 0.016;
       gl_FragColor = col;
     }`,
 };
 
 export function setupPost(renderer, scene, camera) {
-  const composer = new EffectComposer(renderer);
+  // Multisampled float target: the renderer's own antialias is bypassed once
+  // an EffectComposer is in play, so MSAA has to live on the composer target.
+  const size = renderer.getDrawingBufferSize(new THREE.Vector2());
+  const target = new THREE.WebGLRenderTarget(size.width, size.height, {
+    type: THREE.HalfFloatType,
+    samples: 4,
+  });
+  const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
 
   const bloom = new UnrealBloomPass(

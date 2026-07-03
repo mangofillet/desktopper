@@ -307,20 +307,29 @@ export function skyTexture() {
     }
   }
   ctx.globalAlpha = 1;
-  // Forest silhouette — layered dark pines
-  for (const [base, col] of [[520, "#0b1410"], [560, "#070e0a"]]) {
-    ctx.fillStyle = col;
-    ctx.beginPath();
-    ctx.moveTo(0, 640);
-    ctx.lineTo(0, base);
-    for (let x = 0; x <= 1024; x += 26) {
-      const h = 30 + r() * 55;
-      ctx.lineTo(x + 8, base - h);
-      ctx.lineTo(x + 16, base - h * 0.4);
-    }
-    ctx.lineTo(1024, 640);
-    ctx.closePath();
-    ctx.fill();
-  }
   return toTexture(c);
+}
+
+export function forestLayerTexture({ seed = 1, color = "#0b1410", base = 300, spread = 90, step = 26 } = {}) {
+  // A transparent band of pine silhouettes for a parallax depth layer.
+  const [c, ctx] = makeCanvas(1024, 512);
+  const r = rng(seed);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, 512);
+  ctx.lineTo(0, base);
+  for (let x = 0; x <= 1024; x += step) {
+    const h = spread * (0.4 + r() * 0.6);
+    // little triangular pine: up to a tip, back down, with a notch
+    ctx.lineTo(x + step * 0.3, base - h);
+    ctx.lineTo(x + step * 0.5, base - h * 0.55);
+    ctx.lineTo(x + step * 0.7, base - h * 0.9);
+    ctx.lineTo(x + step, base - h * 0.35);
+  }
+  ctx.lineTo(1024, 512);
+  ctx.closePath();
+  ctx.fill();
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
 }

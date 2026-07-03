@@ -8,6 +8,7 @@ import {
   posterTexture,
   stickyTexture,
   skyTexture,
+  forestLayerTexture,
   steamTexture,
 } from "./textures.js";
 import { createOS } from "./os.js";
@@ -46,11 +47,14 @@ export function buildScene(scene) {
   const interactables = [];
 
   // ================= Room =================
+  // Soft plain white carpet: no busy diffuse pattern, just subtle fibre depth
+  // from the wool normal map so it reads as clean pile.
+  const carpetNormal = pbr("/textures/wool_boucle_nor_gl_1k.jpg", { repeat: 10 });
   const floorMat = new THREE.MeshStandardMaterial({
-    map: pbr("/textures/old_wood_floor_diff_1k.jpg", { repeat: 3, srgb: true }),
-    roughnessMap: pbr("/textures/old_wood_floor_rough_1k.jpg", { repeat: 3 }),
-    color: 0xa8907a, // warm mid wood — lofi night, still readable
-    roughness: 1,
+    normalMap: carpetNormal,
+    normalScale: new THREE.Vector2(0.4, 0.4),
+    color: 0xa89a7c, // dark beige carpet
+    roughness: 0.98,
   });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(8, 8), floorMat);
   floor.rotation.x = -Math.PI / 2;
@@ -59,14 +63,23 @@ export function buildScene(scene) {
 
   const wallMat = new THREE.MeshStandardMaterial({
     map: pbr("/textures/painted_plaster_wall_diff_1k.jpg", { repeat: 2, srgb: true }),
-    color: 0x8a7a60, // warm olive-tan plaster, lofi room tone
+    color: 0xa89a7c, // warm olive-tan plaster, lofi room tone (lifted)
     roughness: 0.95,
   });
-  // Walls pulled in close — the desk sits snug against them now.
-  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), wallMat);
-  backWall.position.set(0, 2, -0.62);
-  backWall.receiveShadow = true;
-  root.add(backWall);
+  // Back wall built around a window opening (x∈[-0.7,0.8], y∈[1.05,2.0]) so
+  // the forest diorama behind it reads with real parallax depth.
+  const WZ = -0.62;
+  const wallSeg = (w, h, x, y) => {
+    const m = box(w, h, 0.04, wallMat.clone());
+    m.position.set(x, y, WZ);
+    m.receiveShadow = true;
+    root.add(m);
+  };
+  // Opening: x∈[-0.7, 0.58], y∈[1.05, 2.0] (trimmed on the right).
+  wallSeg(8, 2.0, 0, 3.0);          // above the window
+  wallSeg(8, 1.05, 0, 0.525);       // below the window
+  wallSeg(3.3, 0.95, -2.35, 1.52);  // left of the window
+  wallSeg(3.42, 0.95, 2.29, 1.52);  // right of the window (pulled in)
   const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(8, 4), wallMat.clone());
   leftWall.rotation.y = Math.PI / 2;
   leftWall.position.set(-1.15, 2, 0);
@@ -82,25 +95,53 @@ export function buildScene(scene) {
   root.add(skirtB, skirtL);
 
   // ================= Window: wide, behind the desk, full of stars =================
-  const windowGroup = new THREE.Group();
-  windowGroup.position.set(0.05, 1.52, -0.615);
-  const sky = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.5, 0.95),
+  // Recessed diorama behind the opening: star backdrop farthest, then three
+  // pine layers receding toward the glass. Different depths → parallax as the
+  // camera moves. All unlit (MeshBasic) so they glow like a real night sky.
+  const diorama = new THREE.Group();
+  diorama.position.set(0.05, 1.52, 0);
+  const starBackdrop = new THREE.Mesh(
+    new THREE.PlaneGeometry(6.5, 3.4),
     new THREE.MeshBasicMaterial({ map: skyTexture() })
   );
-  windowGroup.add(sky);
+  starBackdrop.position.set(0, 0.03, -1.75); // wide enough to never edge-out on a pan
+  diorama.add(starBackdrop);
+  // Shorter pines sitting low in the opening; three depths for parallax.
+  const forestLayers = [
+    { z: -1.35, w: 5.4, h: 0.95, y: -0.34, color: "#243830", base: 350, spread: 42, step: 34, seed: 3 },
+    { z: -1.05, w: 4.6, h: 0.9, y: -0.36, color: "#152420", base: 350, spread: 52, step: 28, seed: 7 },
+    { z: -0.8, w: 3.8, h: 0.85, y: -0.38, color: "#0a1310", base: 350, spread: 64, step: 24, seed: 12 },
+  ];
+  for (const L of forestLayers) {
+    const layer = new THREE.Mesh(
+      new THREE.PlaneGeometry(L.w, L.h),
+      new THREE.MeshBasicMaterial({
+        map: forestLayerTexture(L),
+        transparent: true,
+        depthWrite: false,
+      })
+    );
+    layer.position.set(0, L.y, L.z);
+    diorama.add(layer);
+  }
+  root.add(diorama);
+
+  // Frame matches the trimmed opening: local x∈[-0.75, 0.53], centred at -0.11.
+  const windowGroup = new THREE.Group();
+  windowGroup.position.set(0.05, 1.52, -0.615);
   const frameMat = mat(0x7a5c3e, { roughness: 0.6 }); // warm timber
-  const fT = box(1.62, 0.06, 0.07, frameMat);
-  fT.position.y = 0.5;
-  const fB = box(1.62, 0.06, 0.07, frameMat);
-  fB.position.y = -0.5;
+  const fT = box(1.4, 0.06, 0.07, frameMat);
+  fT.position.set(-0.11, 0.5, 0);
+  const fB = box(1.4, 0.06, 0.07, frameMat);
+  fB.position.set(-0.11, -0.5, 0);
   const fL = box(0.06, 1.06, 0.07, frameMat);
-  fL.position.x = -0.78;
-  const fR = fL.clone();
-  fR.position.x = 0.78;
+  fL.position.x = -0.75;
+  const fR = box(0.06, 1.06, 0.07, frameMat);
+  fR.position.x = 0.53;
   const mullion = box(0.04, 0.95, 0.055, frameMat); // single centre divider
-  const sill = box(1.7, 0.035, 0.14, frameMat);
-  sill.position.set(0, -0.545, 0.05);
+  mullion.position.x = -0.11;
+  const sill = box(1.46, 0.035, 0.14, frameMat);
+  sill.position.set(-0.11, -0.545, 0.05);
   windowGroup.add(fT, fB, fL, fR, mullion, sill);
   root.add(windowGroup);
   // Faint cool starlight spilling in over the desk from behind.
@@ -113,48 +154,9 @@ export function buildScene(scene) {
   starDir.target.position.set(0.05, DESK_H, 0.3);
   root.add(starDir, starDir.target);
 
-  // ---- Windowsill plants: cactus, leafy tuft, round bush ----
-  const potMat = mat(0xc8bfae, { roughness: 0.8 });
+  // Greens shared by the trailing vines below.
   const greenA = mat(0x3f6a42, { roughness: 0.85 });
   const greenB = mat(0x557a48, { roughness: 0.85 });
-  function sillPot(x, build) {
-    const gPot = new THREE.Group();
-    gPot.position.set(x, 0.99, -0.57);
-    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.026, 0.05, 16), potMat);
-    pot.position.y = 0.025;
-    pot.castShadow = true;
-    gPot.add(pot);
-    build(gPot);
-    root.add(gPot);
-  }
-  sillPot(-0.55, (gp) => {
-    // cactus: body + one arm
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.016, 0.06, 4, 10), greenB);
-    body.position.y = 0.09;
-    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.009, 0.025, 4, 8), greenB);
-    arm.position.set(0.022, 0.095, 0);
-    arm.rotation.z = -0.5;
-    gp.add(body, arm);
-  });
-  sillPot(0.62, (gp) => {
-    // leafy tuft
-    for (let i = 0; i < 7; i++) {
-      const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.007, 0.09, 6), i % 2 ? greenA : greenB);
-      const a = (i / 7) * Math.PI * 2;
-      leaf.position.set(Math.cos(a) * 0.012, 0.09, Math.sin(a) * 0.012);
-      leaf.rotation.z = Math.cos(a) * 0.55;
-      leaf.rotation.x = Math.sin(a) * 0.55;
-      gp.add(leaf);
-    }
-  });
-  sillPot(0.34, (gp) => {
-    // little round bush
-    for (let i = 0; i < 5; i++) {
-      const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(0.018, 1), i % 2 ? greenA : greenB);
-      blob.position.set((i - 2) * 0.012, 0.07 + (i % 3) * 0.012, (i % 2) * 0.01);
-      gp.add(blob);
-    }
-  });
 
   // ---- Trailing vines: from the window's top corners, drooping leaves ----
   function vine(x0, y0, z0, strands, len) {
@@ -272,7 +274,12 @@ export function buildScene(scene) {
     const c = bb.getCenter(new THREE.Vector3());
     model.position.set(-c.x, -bb.min.y, -c.z);
     model.traverse((o) => {
-      if (o.isMesh) o.castShadow = o.receiveShadow = true;
+      if (o.isMesh) {
+        o.castShadow = o.receiveShadow = true;
+        // The re-parented screen plane throws off auto bounding spheres, which
+        // frustum-culls the whole laptop at some angles. It's tiny — just skip.
+        o.frustumCulled = false;
+      }
     });
     laptop.add(model);
     const sn = model.getObjectByName("classic_laptop_screen");
@@ -301,6 +308,7 @@ export function buildScene(scene) {
       screen.visible = true;
     }
   });
+  screen.frustumCulled = false;
   laptop.add(screen);
   root.add(laptop);
   interactables.push({
@@ -465,7 +473,7 @@ export function buildScene(scene) {
     poke: () => { steamT0 = nowT; },
   });
 
-  // ================= Speakers (LED pulses with "music") =================
+  // ================= Speakers (a prop you can power on/off) =================
   const spkMat = mat(0x26262b, { roughness: 0.7 });
   const grillMat = mat(0x141417, { roughness: 0.95 });
   const leds = [];
@@ -487,8 +495,10 @@ export function buildScene(scene) {
     spk.add(led);
     leds.push(led.material);
     root.add(spk);
-    interactables.push({ id: `speaker-${x < 0 ? "l" : "r"}`, kind: "prop", object: spk });
+    interactables.push({ id: `speaker-${x < 0 ? "l" : "r"}`, kind: "speaker", object: spk });
   }
+  let speakersOn = false;
+  const setSpeakersOn = (on) => { speakersOn = on; };
 
   // ================= Framed photo =================
   const frame = new THREE.Group();
@@ -648,20 +658,20 @@ export function buildScene(scene) {
     bookStack.add(book);
     stackY += b.s[1];
   });
-  // Top book comes from portfolio.json (`book`) — cover text is readable
-  // from the hero shot, so it's part of the personality.
-  const topBook = config.book ?? { title: "Gödel, Escher, Bach", author: "Douglas R. Hofstadter" };
+  // Top book comes from portfolio.json (`book`) — deep maroon with gold type
+  // (the Bardo Thodol by default), readable from the hero shot.
+  const topBook = config.book ?? { title: "Bardo Thodol", author: "The Tibetan Book of the Dead" };
   const topCover = bookCoverTexture({
     title: topBook.title,
     author: topBook.author,
-    bg: "#cfc096",
-    fg: "#3a3226",
+    bg: "#4a2018",
+    fg: "#d8b46a",
   });
   const topBookMats = [
-    mat(0xcfc096), mat(0xcfc096),
+    mat(0x4a2018), mat(0x4a2018),
     new THREE.MeshStandardMaterial({ map: topCover, roughness: 0.6 }), // top face
-    mat(0xcfc096),
-    mat(0xd8cfb8, { roughness: 0.95 }), mat(0xcfc096),
+    mat(0x4a2018),
+    mat(0xd8cfb8, { roughness: 0.95 }), mat(0x4a2018),
   ];
   const topBookMesh = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.025, 0.205), topBookMats);
   topBookMesh.castShadow = true;
@@ -752,8 +762,8 @@ export function buildScene(scene) {
     [-0.6, 0.02, -0.58],
     [0.0, 0.015, -0.62],
   ]);
-  const strip = box(0.28, 0.035, 0.08, mat(0xe8e4da, { roughness: 0.6 }));
-  strip.position.set(0.18, 0.02, -0.62);
+  const strip = box(0.28, 0.035, 0.08, mat(0x35353a, { roughness: 0.7 }));
+  strip.position.set(0.18, 0.02, -0.5); // sat in front of the wall, not in it
   strip.rotation.y = 0.15;
   const stripLed = new THREE.Mesh(
     new THREE.CircleGeometry(0.005, 10),
@@ -820,11 +830,22 @@ export function buildScene(scene) {
   vine(-1.09, 1.68, -0.12, 3, 0.5);
 
   // ================= Ambient / fill =================
-  // Warm-dim room tone: enough to read every silhouette, still night.
-  const hemi = new THREE.HemisphereLight(0x54604e, 0x33261c, 0.85);
+  // Room tone lifted so the palette (wood, walls, book spines) actually reads
+  // while the night mood holds.
+  const hemi = new THREE.HemisphereLight(0x74806a, 0x4a3c2c, 1.75);
   root.add(hemi);
+  // A soft moonlit ambient wash from the window side, fills the darker corners.
+  const roomFill = new THREE.DirectionalLight(0x9db3c4, 0.82);
+  roomFill.position.set(0.4, 1.6, 2.2);
+  roomFill.target.position.set(-0.4, DESK_H, -0.2);
+  root.add(roomFill, roomFill.target);
+  // Second gentle fill from the left so the bookshelf side isn't crushed.
+  const leftFill = new THREE.DirectionalLight(0xb0a488, 0.36);
+  leftFill.position.set(-2.0, 1.5, 1.0);
+  leftFill.target.position.set(0, DESK_H, 0);
+  root.add(leftFill, leftFill.target);
   // Whisper of warm bounce from the lamp pool back up at the scene
-  const bounce = new THREE.PointLight(0xcc8855, 0.3, 2.0, 2);
+  const bounce = new THREE.PointLight(0xcc8855, 0.4, 2.2, 2);
   bounce.position.set(0, TOP + 0.3, 0.4);
   root.add(bounce);
 
@@ -841,8 +862,13 @@ export function buildScene(scene) {
     const base = 4.6 + Math.sin(t * 1.7) * 0.12 + Math.sin(t * 7.3) * 0.04;
     lampLight.intensity = base * (1 - dim * 0.55);
     screenGlow.intensity = 0.25 + Math.sin(t * 11) * 0.015;
-    const pulse = 0.5 + 0.5 * Math.sin(t * 2.4);
-    leds.forEach((l) => l.color.setHSL(0.38, 1, 0.35 + pulse * 0.25));
+    // Speaker LEDs: steady green with a faint breathe when on, dim red when off.
+    if (speakersOn) {
+      const pulse = 0.5 + 0.5 * Math.sin(t * 2.4);
+      leds.forEach((l) => l.color.setHSL(0.38, 1, 0.4 + pulse * 0.15));
+    } else {
+      leds.forEach((l) => l.color.setHSL(0.02, 0.9, 0.12));
+    }
     nowT = t;
     if (os.tick(t)) screenTex.needsUpdate = true;
     steamSprites.forEach(({ sp, phase, sway }, i) => {
@@ -862,5 +888,5 @@ export function buildScene(scene) {
     dimTarget = on ? 1 : 0;
   };
 
-  return { animate, interactables, setFocusDim, os, screen };
+  return { animate, interactables, setFocusDim, setSpeakersOn, os, screen };
 }
