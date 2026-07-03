@@ -217,6 +217,18 @@ export function createOS({ config }) {
       .map(([k, v]) => ({ label: `${k}: ${v}`, url: k === "email" ? `mailto:${v}` : v }));
     openDoc("contact.txt", "", links);
   }
+  function openCv() {
+    if (config.cvOnRequest || !config.cvUrl) {
+      const email = data().contact.email || config.links?.email || "";
+      openDoc(
+        "cv.txt",
+        "Curriculum Vitae\n\nAvailable upon request." + (email ? "\n\nDrop me a line and I'll send it over." : ""),
+        email ? [{ label: "email me ↗", url: "mailto:" + email }] : []
+      );
+    } else {
+      handlers.openReader({ title: "Curriculum Vitae", pdfUrl: config.cvUrl, pdfName: "cv.pdf" });
+    }
+  }
 
   // ---------- folders content ----------
   function folderItems(kind) {
@@ -291,7 +303,7 @@ export function createOS({ config }) {
     } else if (c === "open" && arg === "contact.txt") {
       openContact();
     } else if (c === "open" && arg === "cv.pdf") {
-      handlers.openReader({ title: "Curriculum Vitae", pdfUrl: config.cvUrl, pdfName: "cv.pdf" });
+      openCv();
     } else if (c === "open") {
       const p = d.papers.concat(d.presentations).find((x) => fileName(x.title, "pdf").startsWith(arg));
       if (p) openPaper(p);
@@ -381,7 +393,7 @@ export function createOS({ config }) {
     put("◈", "presentations", () => openFolder("presentations", "Data Analytics & Science Presentations", folderItems("presentations")), "#8fd9a8");
     put("≡", "about.txt", () => openDoc("about.txt", d.about, []));
     put("@", "contact.txt", () => openContact());
-    put("▣", "cv.pdf", () => handlers.openReader({ title: "Curriculum Vitae", pdfUrl: config.cvUrl, pdfName: "cv.pdf" }));
+    put("▣", "cv.pdf", () => openCv());
     if (d.media.length) put("♪", "media", () => openFolder("media", "~/media", folderItems("media")));
     if (floppyIn) put("▦", "projects (A:)", () => openFolder("projects", "~/projects", folderItems("projects")), "#8fd9a8");
     put("🔒", "secret", () => promptSecret(), "#c9a86a");

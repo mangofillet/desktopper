@@ -1042,9 +1042,11 @@ export function buildScene(scene) {
     };
     const L = layout[e.id];
     if (!L) continue;
+    if (L.hidden) e.object.visible = false; // deleted in edit mode
+    if (!L.pos) continue; // hidden-only entry, no move/rotate to apply
     const before = e.object.position.clone();
     e.object.position.set(...L.pos);
-    e.object.rotation.set(...L.rot);
+    if (L.rot) e.object.rotation.set(...L.rot);
     e.baseY = e.object.position.y;
     if (e.item) {
       e.item.baseY = e.object.position.y;

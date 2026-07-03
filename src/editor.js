@@ -4,7 +4,7 @@
 //    & projects — saved to localStorage, applied to the 3D scene on "Apply".
 //  · export the merged portfolio.json to commit into the repo.
 import * as THREE from "three";
-import { config, saveConfig, setLayout, resetAll, exportConfig, editorUnlocked, lockEditor, savePdf } from "./store.js";
+import { config, saveConfig, setLayout, setHidden, undo, canUndo, resetAll, exportConfig, editorUnlocked, lockEditor, savePdf } from "./store.js";
 
 const css = /* css */ `
   #dt-edit-toggle {
@@ -75,15 +75,17 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
   toggle.title = "Edit mode";
   document.body.appendChild(toggle);
 
+  const HINT_TEXT = "EDIT MODE · drag to move · click to select · scroll wheel over an object to rotate · Delete removes an object";
   const hint = document.createElement("div");
   hint.id = "dt-edit-hint";
-  hint.textContent = "EDIT MODE · drag to move · click to select · scroll wheel over an object to rotate";
+  hint.textContent = HINT_TEXT;
   document.body.appendChild(hint);
 
   const panel = document.createElement("div");
   panel.id = "dt-edit-panel";
   panel.innerHTML = `
     <header><b>Edit</b>
+      <button class="mini" data-a="undo" title="Undo last change">↶ Undo</button>
       <button class="mini" data-a="lock" title="Lock (hide editor)">🔒</button>
       <button class="mini" data-a="exit">Done</button>
     </header>
@@ -184,6 +186,7 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
       ${axisRow("Roll (Z)", "z")}
       <div style="margin-top:8px; display:flex; gap:6px;">
         <button class="mini" data-a="reset-pos">Reset position</button>
+        <button class="mini del" data-a="del-obj">Delete object</button>
       </div>`;
     ["x", "y", "z"].forEach((ax) => {
       const range = selBox.querySelector(`input[data-ax="${ax}"]`);
@@ -199,6 +202,16 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
       selected.object.rotation.fromArray(selected.orig.rot);
       persist(selected);
       renderSel();
+    });
+    selBox.querySelector('[data-a="del-obj"]').addEventListener("click", () => {
+      const e = selected;
+      setHidden(e.id, true);
+      e.object.visible = false;
+      setGlow(e.object, false);
+      selected = null;
+      renderSel();
+      hint.textContent = `Deleted “${e.id}” · press ↶ Undo to bring it back`;
+      setTimeout(() => (hint.textContent = HINT_TEXT), 2600);
     });
   }
 
@@ -291,6 +304,11 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
         ${field("GitHub", config.links?.github)}
         ${field("Scholar", config.links?.scholar)}
         ${field("LinkedIn", config.links?.linkedin)}
+        <h4>CV</h4>
+        <label style="display:flex;align-items:center;gap:7px;margin:6px 0">
+          <input type="checkbox" data-cvreq${config.cvOnRequest ? " checked" : ""} style="width:auto">
+          Available on request (show a note instead of the PDF)
+        </label>
         ${field("CV URL", config.cvUrl)}`;
       binders = [
         (v) => (config.name = v),
@@ -435,6 +453,10 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
   const mediaKey = () => "media_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
   function wireStructural(tab) {
+    // ---- Profile tab: CV "available on request" toggle ----
+    const cvreq = tabBody.querySelector("[data-cvreq]");
+    if (cvreq) cvreq.addEventListener("change", () => { config.cvOnRequest = cvreq.checked; saveConfig(); });
+
     // ---- Laptop tab: PDF/media uploads, deletes, secret projects ----
     const L = config.laptop;
     tabBody.querySelectorAll("[data-lpdfs]").forEach((inp) => {
@@ -567,6 +589,12 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
     if (a === "exit") setActive(false);
     else if (a === "lock") { lockEditor(); setActive(false); toggle.style.display = "none"; }
     else if (a === "apply") location.reload();
+    else if (a === "undo") {
+      if (!canUndo()) { hint.textContent = "Nothing to undo"; setTimeout(() => (hint.textContent = HINT_TEXT), 1600); return; }
+      try { sessionStorage.setItem("desktopper.reopenEditor", "1"); } catch {}
+      undo();
+      location.reload(); // re-apply the restored content + layout
+    }
     else if (a === "export") exportConfig();
     else if (a === "reset") {
       if (confirm("Revert everything (content + object positions) back to the original? This clears all your edits.")) {
@@ -575,6 +603,15 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
       }
     }
   });
+
+  // Re-open the editor automatically after an Undo reload, so undoing feels
+  // continuous rather than kicking you out to the room.
+  try {
+    if (sessionStorage.getItem("desktopper.reopenEditor")) {
+      sessionStorage.removeItem("desktopper.reopenEditor");
+      setActive(true);
+    }
+  } catch { /* ignore */ }
 
   return { get active() { return editState.active; }, setActive };
 }

@@ -40,7 +40,52 @@ try {
 export { config };
 export const getLayout = () => layout;
 
+// ---- undo history (edit mode) ----
+// Before each change we snapshot the *previous* saved state onto a stack in
+// sessionStorage (survives the reloads that Apply/Undo trigger, clears on a
+// fresh session). Rapid successive edits (e.g. typing) coalesce into one step.
+const LS_HISTORY = "desktopper.history";
+let lastPush = 0;
+function readStack() {
+  try { return JSON.parse(sessionStorage.getItem(LS_HISTORY) || "[]"); } catch { return []; }
+}
+function writeStack(s) {
+  try { sessionStorage.setItem(LS_HISTORY, JSON.stringify(s)); } catch { /* ignore */ }
+}
+function pushHistory() {
+  const now = Date.now();
+  let stack = readStack();
+  // coalesce: edits within 700ms of the last snapshot belong to one action
+  if (now - lastPush < 700 && stack.length) { lastPush = now; return; }
+  lastPush = now;
+  stack.push({
+    config: localStorage.getItem(LS_CONFIG),
+    layout: localStorage.getItem(LS_LAYOUT),
+  });
+  if (stack.length > 50) stack = stack.slice(-50);
+  writeStack(stack);
+}
+export function canUndo() { return readStack().length > 0; }
+export function undo() {
+  const stack = readStack();
+  const snap = stack.pop();
+  if (!snap) return false;
+  try {
+    if (snap.config == null) localStorage.removeItem(LS_CONFIG);
+    else localStorage.setItem(LS_CONFIG, snap.config);
+    if (snap.layout == null) localStorage.removeItem(LS_LAYOUT);
+    else localStorage.setItem(LS_LAYOUT, snap.layout);
+  } catch { /* ignore */ }
+  writeStack(stack);
+  return true;
+}
+
+function writeLayoutLS() {
+  try { localStorage.setItem(LS_LAYOUT, JSON.stringify(layout)); } catch { /* ignore */ }
+}
+
 export function saveConfig() {
+  pushHistory();
   try {
     localStorage.setItem(LS_CONFIG, JSON.stringify(config));
   } catch (e) {
@@ -49,18 +94,27 @@ export function saveConfig() {
 }
 
 export function setLayout(id, pos, rot) {
-  layout[id] = { pos: pos.map((n) => +n.toFixed(4)), rot: rot.map((n) => +n.toFixed(4)) };
-  try {
-    localStorage.setItem(LS_LAYOUT, JSON.stringify(layout));
-  } catch (e) {
-    /* ignore */
-  }
+  pushHistory();
+  layout[id] = {
+    ...(layout[id] || {}),
+    pos: pos.map((n) => +n.toFixed(4)),
+    rot: rot.map((n) => +n.toFixed(4)),
+  };
+  writeLayoutLS();
+}
+
+// Hide (delete) or restore a desk object; scene.js reads layout[id].hidden.
+export function setHidden(id, hidden) {
+  pushHistory();
+  layout[id] = { ...(layout[id] || {}), hidden: !!hidden };
+  writeLayoutLS();
 }
 
 export function resetAll() {
   try {
     localStorage.removeItem(LS_CONFIG);
     localStorage.removeItem(LS_LAYOUT);
+    sessionStorage.removeItem(LS_HISTORY);
   } catch (e) {
     /* ignore */
   }

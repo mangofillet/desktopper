@@ -168,9 +168,17 @@ export function setupInteractions({
       reader.open(d);
       return;
     } else if (item.kind === "cv") {
-      // Opens the actual CV PDF in the reader, not an external site.
-      reader.open({ title: "Curriculum Vitae", pdfUrl: config.cvUrl, pdfName: "cv.pdf" });
-      return;
+      if (config.cvOnRequest || !config.cvUrl) {
+        const email = config.links?.email || "";
+        html = `<h2>Curriculum Vitae</h2>
+          <div class="meta">Available upon request</div>
+          <p>Drop me a line and I'll send it over.</p>
+          ${email ? `<a class="btn" href="mailto:${email}">email me</a>` : ""}`;
+      } else {
+        // Opens the actual CV PDF in the reader, not an external site.
+        reader.open({ title: "Curriculum Vitae", pdfUrl: config.cvUrl, pdfName: "cv.pdf" });
+        return;
+      }
     } else if (item.kind === "photo") {
       // The photo is its own small identity card — the full bio lives on the
       // computer (about.txt), not on the desk.
@@ -228,13 +236,8 @@ export function setupInteractions({
     toast.classList.remove("show");
   }
 
-  // ---------- speakers: an on/off prop (drives laptop media audio later) ----------
-  let speakersOn = true; // powered on by default
-  function toggleSpeakers() {
-    speakersOn = !speakersOn;
-    setSpeakersOn?.(speakersOn);
-    showCaption(speakersOn ? "speakers on" : "speakers off");
-  }
+  // Speakers are always powered on (green LEDs) — no toggle. setSpeakersOn is
+  // left wired for the scene default; nothing turns them off.
 
   // ---------- desk lamp: click to switch the light on/off ----------
   let lampOn = true;
@@ -325,11 +328,6 @@ export function setupInteractions({
     if (hovered === phonesItem) {
       if (phonesT < 0.5 && phonesDir <= 0) wearPhones();
       else takeOffPhones();
-      return;
-    }
-    if (hovered?.id.startsWith("speaker")) {
-      hovered.wobbleT = 0;
-      toggleSpeakers();
       return;
     }
     if (hovered?.kind === "lamp") {

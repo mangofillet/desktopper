@@ -58,7 +58,7 @@ setupEditor({ renderer, camera, controls, editables, editState });
 const hero = createHero(config);
 renderer.domElement.addEventListener("pointerdown", () => hero.dismiss(), { once: true });
 
-if (import.meta.env?.DEV) window.__diag = { scene, camera, screen, interactables, THREE };
+if (import.meta.env?.DEV) window.__diag = { scene, camera, screen, interactables, THREE, config };
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
