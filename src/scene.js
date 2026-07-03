@@ -79,9 +79,10 @@ export function buildScene(scene) {
   skirtL.position.set(-1.59, 0.045, 0);
   root.add(skirtB, skirtL);
 
-  // ================= Window (night city + moon) =================
+  // ================= Window (dusk sky + moon), on the side wall =================
   const windowGroup = new THREE.Group();
-  windowGroup.position.set(-0.45, 1.62, -0.93);
+  windowGroup.position.set(-1.57, 1.5, 0.05);
+  windowGroup.rotation.y = Math.PI / 2; // set into the left wall, facing the desk
   const night = new THREE.Mesh(
     new THREE.PlaneGeometry(0.82, 1.0),
     new THREE.MeshBasicMaterial({ map: nightSkyTexture() })
@@ -102,6 +103,11 @@ export function buildScene(scene) {
   sill.position.set(0, -0.575, 0.04);
   windowGroup.add(fT, fB, fL, fR, fMH, fMV, sill);
   root.add(windowGroup);
+  // Soft dusk spill from the window pane into the room.
+  const windowGlow = new THREE.RectAreaLight(0xd8a37a, 1.6, 0.82, 1.0);
+  windowGlow.position.set(-1.55, 1.5, 0.05);
+  windowGlow.lookAt(0.4, 0.8, -0.1);
+  root.add(windowGlow);
 
   // ================= Desk =================
   const deskMat = new THREE.MeshStandardMaterial({
@@ -193,7 +199,7 @@ export function buildScene(scene) {
     id: "laptop",
     kind: "laptop",
     object: laptop,
-    focus: { pos: [0.1, TOP + 0.3, 0.42], look: [0.05, TOP + 0.16, -0.24] },
+    focus: { pos: [0.07, TOP + 0.25, 0.18], look: [0.05, TOP + 0.17, -0.24] },
   });
 
   // Screen light: a mint RectAreaLight matching the panel, plus a soft point.
@@ -627,8 +633,7 @@ export function buildScene(scene) {
 
   // ================= Poster & shelf (left wall) =================
   const poster = new THREE.Group();
-  poster.position.set(-1.585, 1.55, 0.55);
-  poster.rotation.y = Math.PI / 2;
+  poster.position.set(-0.45, 1.55, -0.935); // back wall, where the window was
   const posterSheet = new THREE.Mesh(
     new THREE.PlaneGeometry(0.42, 0.594),
     new THREE.MeshStandardMaterial({ map: posterTexture(), roughness: 0.85 })
@@ -640,7 +645,7 @@ export function buildScene(scene) {
   root.add(poster);
 
   const shelf = new THREE.Group();
-  shelf.position.set(-1.57, 1.25, -0.35);
+  shelf.position.set(-1.57, 1.25, -0.68); // left wall, clear of the window
   shelf.rotation.y = Math.PI / 2;
   const plank = box(0.55, 0.022, 0.14, mat(0x4a3220, { roughness: 0.6 }));
   shelf.add(plank);
@@ -671,12 +676,13 @@ export function buildScene(scene) {
   root.add(shelf);
 
   // ================= Ambient / fill =================
-  const hemi = new THREE.HemisphereLight(0x4a4460, 0x201812, 0.85);
+  const hemi = new THREE.HemisphereLight(0x4f4864, 0x241a14, 1.05);
   root.add(hemi);
-  // Dusk light through the window — mauve-blue, warmer than moonlight.
-  const moonLight = new THREE.DirectionalLight(0x8a7a9c, 1.2);
-  moonLight.position.set(-1.1, 2.5, 0.5);
-  moonLight.target.position.set(0.4, DESK_H, -0.2);
+  // Dusk light streaming in from the side window — warm amber-mauve, raking
+  // across the desk from the left.
+  const moonLight = new THREE.DirectionalLight(0xc0937c, 1.5);
+  moonLight.position.set(-2.6, 1.9, 0.15);
+  moonLight.target.position.set(0.3, DESK_H, -0.1);
   moonLight.castShadow = true;
   moonLight.shadow.mapSize.set(1024, 1024);
   moonLight.shadow.bias = -0.002;
