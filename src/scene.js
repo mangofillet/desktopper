@@ -13,7 +13,7 @@ import {
 } from "./textures.js";
 import { createOS } from "./os.js";
 import { asset } from "./assets.js";
-import config from "../portfolio.json";
+import { config, getLayout } from "./store.js";
 
 const DESK_H = 0.75;
 const TOP = DESK_H + 0.021;
@@ -521,8 +521,14 @@ export function buildScene(scene) {
   pctx.arc(64, 70, 26, 0, Math.PI * 2); // head silhouette
   pctx.fill();
   pctx.fillRect(30, 96, 68, 64); // shoulders
-  const photoTex = new THREE.CanvasTexture(photoCanvas);
-  photoTex.colorSpace = THREE.SRGBColorSpace;
+  // Owner-supplied photo (edit mode) overrides the generated silhouette.
+  const photoTex = config.photoImage
+    ? pbr(config.photoImage, { srgb: true })
+    : (() => {
+        const t = new THREE.CanvasTexture(photoCanvas);
+        t.colorSpace = THREE.SRGBColorSpace;
+        return t;
+      })();
   const photo = new THREE.Mesh(
     new THREE.PlaneGeometry(0.085, 0.11),
     new THREE.MeshStandardMaterial({ map: photoTex, roughness: 0.5 })
@@ -888,5 +894,41 @@ export function buildScene(scene) {
     dimTarget = on ? 1 : 0;
   };
 
-  return { animate, interactables, setFocusDim, setSpeakersOn, os, screen };
+  // ================= Editable object registry + saved layout =================
+  // Movable in edit mode. Interactables carry a `focus`, which we shift by the
+  // same delta when the object is repositioned so click-to-focus still lands.
+  const editables = [];
+  for (const it of interactables) {
+    if (it.id === "laptop") continue; // centrepiece stays put
+    editables.push({ id: it.id, object: it.object, item: it });
+  }
+  editables.push({ id: "lamp", object: lampG });
+  editables.push({ id: "books", object: bookStack });
+  editables.push({ id: "pencup", object: cupG });
+  editables.push({ id: "photo", object: frame });
+  editables.push({ id: "poster", object: poster });
+
+  const layout = getLayout();
+  for (const e of editables) {
+    e.orig = {
+      pos: e.object.position.toArray(),
+      rot: e.object.rotation.toArray().slice(0, 3),
+    };
+    const L = layout[e.id];
+    if (!L) continue;
+    const before = e.object.position.clone();
+    e.object.position.set(...L.pos);
+    e.object.rotation.set(...L.rot);
+    e.baseY = e.object.position.y;
+    if (e.item) {
+      e.item.baseY = e.object.position.y;
+      if (e.item.focus) {
+        const d = e.object.position.clone().sub(before);
+        e.item.focus.pos = e.item.focus.pos.map((v, i) => v + d.getComponent(i));
+        e.item.focus.look = e.item.focus.look.map((v, i) => v + d.getComponent(i));
+      }
+    }
+  }
+
+  return { animate, interactables, editables, setFocusDim, setSpeakersOn, os, screen };
 }

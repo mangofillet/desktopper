@@ -86,10 +86,35 @@ await page.screenshot({ path: `${SHOT}/05c-os-papers.png` });
 await page.keyboard.press("Escape");
 await page.waitForTimeout(1600);
 
+// ---- Edit mode (owner-only) on a fresh page with ?edit ----
+const ep = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+ep.on("pageerror", (e) => errors.push("EDIT PAGEERR: " + e.message));
+ep.on("console", (m) => m.type() === "error" && errors.push("EDIT: " + m.text()));
+await ep.goto(`http://localhost:${port}/?edit`, { waitUntil: "networkidle" });
+await ep.waitForTimeout(5500);
+if ((await ep.locator("#dt-edit-toggle").count()) < 1) errors.push("EDIT: toggle missing");
+await ep.click("#dt-edit-toggle");
+await ep.waitForTimeout(250);
+if ((await ep.locator("#dt-edit-panel.show").count()) < 1) errors.push("EDIT: panel didn't open");
+await ep.click("#dt-edit-tabs button[data-tab=profile]");
+await ep.waitForTimeout(120);
+await ep.fill("#dt-edit-tabbody input", "Verify Name");
+await ep.waitForTimeout(120);
+const nm = await ep.evaluate(() => JSON.parse(localStorage.getItem("desktopper.config.v1")).name);
+if (nm !== "Verify Name") errors.push("EDIT: text edit not persisted");
+await ep.mouse.move(400, 560);
+await ep.mouse.down();
+await ep.mouse.move(520, 600, { steps: 6 });
+await ep.mouse.up();
+await ep.waitForTimeout(150);
+const moved = await ep.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("desktopper.layout.v1") || "{}")).length);
+if (moved < 1) errors.push("EDIT: drag did not persist a layout entry");
+await ep.screenshot({ path: `${SHOT}/08-edit-mode.png` });
+
 if (errors.length) {
   console.log("PROBLEMS:\n" + errors.join("\n"));
   process.exitCode = 1;
 } else {
-  console.log("OK — hero, reader (pages+search+PDF download), home, projects, laptop OS all clean.");
+  console.log("OK — reader (pages+search+PDF), projects, laptop OS, and edit mode (panel+text+drag) all clean.");
 }
 await browser.close();

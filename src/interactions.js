@@ -80,6 +80,7 @@ function easeInOutCubic(x) {
 
 export function setupInteractions({
   renderer, camera, controls, interactables, config, setFocusDim, setSpeakersOn, os, screenMesh,
+  editState,
 }) {
   // ---------- DOM ----------
   const style = document.createElement("style");
@@ -304,7 +305,7 @@ export function setupInteractions({
   });
 
   renderer.domElement.addEventListener("click", () => {
-    if (flight) return;
+    if (flight || editState?.active) return; // editor owns clicks in edit mode
     if (hovered === phonesItem) {
       if (phonesT < 0.5 && phonesDir <= 0) wearPhones();
       else takeOffPhones();
@@ -363,8 +364,8 @@ export function setupInteractions({
 
   // ---------- per-frame ----------
   function tick(t, dt) {
-    // raycast hover (skip mid-flight and while the reader is up)
-    if (!flight && !reader.isOpen()) {
+    // raycast hover (skip mid-flight, while the reader is up, or in edit mode)
+    if (!flight && !reader.isOpen() && !editState?.active) {
       raycaster.setFromCamera(pointer, camera);
       const hits = raycaster.intersectObjects(hitMeshes, false);
       const item = hits.length ? meshToItem.get(hits[0].object) : null;
