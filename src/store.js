@@ -64,6 +64,43 @@ export function resetAll() {
   } catch (e) {
     /* ignore */
   }
+  try {
+    indexedDB.deleteDatabase(DB_NAME);
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+// ---- PDF blob storage (IndexedDB — PDFs are too big for localStorage) ----
+const DB_NAME = "desktopper";
+const DB_STORE = "pdfs";
+function idb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => {
+      if (!r.result.objectStoreNames.contains(DB_STORE)) r.result.createObjectStore(DB_STORE);
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+export async function savePdf(key, blob) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const t = db.transaction(DB_STORE, "readwrite");
+    t.objectStore(DB_STORE).put(blob, key);
+    t.oncomplete = () => res();
+    t.onerror = () => rej(t.error);
+  });
+}
+export async function getPdf(key) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const t = db.transaction(DB_STORE, "readonly");
+    const rq = t.objectStore(DB_STORE).get(key);
+    rq.onsuccess = () => res(rq.result || null);
+    rq.onerror = () => rej(rq.error);
+  });
 }
 
 export function exportConfig() {

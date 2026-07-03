@@ -111,6 +111,19 @@ const moved = await ep.evaluate(() => Object.keys(JSON.parse(localStorage.getIte
 if (moved < 1) errors.push("EDIT: drag did not persist a layout entry");
 await ep.screenshot({ path: `${SHOT}/08-edit-mode.png` });
 
+// Upload a PDF → a paper is added with its title from the filename + a pdfKey.
+await ep.click("#dt-edit-tabs button[data-tab=papers]");
+await ep.waitForTimeout(150);
+const before = await ep.evaluate(() => JSON.parse(localStorage.getItem("desktopper.config.v1")).papers.length);
+await ep.setInputFiles("#dt-edit-tabbody [data-pdfs]", "public/cv.pdf");
+await ep.waitForTimeout(700);
+const up = await ep.evaluate(() => {
+  const ps = JSON.parse(localStorage.getItem("desktopper.config.v1")).papers;
+  const l = ps[ps.length - 1];
+  return { n: ps.length, title: l.title, key: !!l.pdfKey };
+});
+if (up.n !== before + 1 || !up.key || up.title !== "cv") errors.push("EDIT: PDF upload didn't add a paper: " + JSON.stringify(up));
+
 if (errors.length) {
   console.log("PROBLEMS:\n" + errors.join("\n"));
   process.exitCode = 1;

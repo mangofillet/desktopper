@@ -4,7 +4,7 @@
 //    & projects — saved to localStorage, applied to the 3D scene on "Apply".
 //  · export the merged portfolio.json to commit into the repo.
 import * as THREE from "three";
-import { config, saveConfig, setLayout, resetAll, exportConfig, editorUnlocked, lockEditor } from "./store.js";
+import { config, saveConfig, setLayout, resetAll, exportConfig, editorUnlocked, lockEditor, savePdf } from "./store.js";
 
 const css = /* css */ `
   #dt-edit-toggle {
@@ -290,21 +290,32 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
         (v) => (config.cvUrl = v),
       ];
     } else if (tab === "papers") {
-      html = (config.papers || [])
+      html = `<h4>Upload PDFs</h4>
+        <label>Drop in PDF files — one paper per file, title from the filename.</label>
+        <input type="file" accept="application/pdf" multiple data-pdfs>
+        <div style="color:#8c8575;font-size:11px;margin:4px 0 10px">
+          Shows the real PDF (native search + pages). To publish, also drop the
+          files in <code>public/papers/</code> and commit.
+        </div>`;
+      html += (config.papers || [])
         .map(
           (p, i) => `<div class="row" data-i="${i}">
             <div class="rowhead"><b>${p.title || "untitled"}</b>
               <button class="mini del" data-del="${i}">✕</button></div>
+            <div style="font-size:11.5px;color:#9c9280;margin-bottom:6px">
+              PDF: ${p.pdfName ? p.pdfName : "<i>none</i>"} </div>
+            <label>${p.pdfName ? "Replace PDF" : "Attach PDF"}</label>
+            <input type="file" accept="application/pdf" data-pdf="${i}">
             ${field("Title", p.title)}
             ${field("Authors", p.authors)}
             ${field("Venue", p.venue)}
             ${field("Year", p.year)}
-            <label>Abstract</label><textarea data-bind>${p.abstract ?? ""}</textarea>
-            ${field("URL", p.url)}
+            <label>Abstract (optional — only for papers without a PDF)</label><textarea data-bind>${p.abstract ?? ""}</textarea>
+            ${field("Link URL", p.url)}
           </div>`
         )
         .join("");
-      html += `<button class="mini add" data-add="paper">+ add paper</button>`;
+      html += `<button class="mini add" data-add="paper">+ add blank paper</button>`;
       binders = [];
       (config.papers || []).forEach((p) => {
         binders.push((v) => (p.title = v), (v) => (p.authors = v), (v) => (p.venue = v),
@@ -346,7 +357,41 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
     img.src = URL.createObjectURL(file);
   }
 
+  const titleFromName = (name) =>
+    name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  const pdfKey = () => "pdf_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  async function attachPdf(paper, file) {
+    const key = pdfKey();
+    await savePdf(key, file);
+    paper.pdfKey = key;
+    paper.pdfName = file.name;
+    paper.pdfUrl = "/papers/" + file.name;
+    if (!paper.title || paper.title === "New paper") paper.title = titleFromName(file.name);
+    saveConfig();
+  }
+
   function wireStructural(tab) {
+    // bulk: one paper per uploaded PDF
+    const bulk = tabBody.querySelector("[data-pdfs]");
+    if (bulk) bulk.addEventListener("change", async () => {
+      config.papers ??= [];
+      for (const f of bulk.files) {
+        const paper = { title: "", authors: "", venue: "", year: "", abstract: "", url: "" };
+        config.papers.push(paper); // push first so attachPdf's save includes it
+        await attachPdf(paper, f);
+      }
+      saveConfig();
+      renderTab(tab);
+    });
+    // per-paper attach/replace
+    tabBody.querySelectorAll("[data-pdf]").forEach((inp) => {
+      inp.addEventListener("change", async () => {
+        const f = inp.files[0];
+        if (!f) return;
+        await attachPdf(config.papers[+inp.dataset.pdf], f);
+        renderTab(tab);
+      });
+    });
     tabBody.querySelectorAll("[data-img]").forEach((inp) => {
       inp.addEventListener("change", () => {
         const f = inp.files[0];

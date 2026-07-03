@@ -4,6 +4,7 @@
 import { generateDocument, paginate } from "./docgen.js";
 import { downloadPdf } from "./pdf.js";
 import { asset } from "./assets.js";
+import { getPdf } from "./store.js";
 
 const css = /* css */ `
   #dt-reader {
@@ -62,6 +63,10 @@ const css = /* css */ `
   .dt-page .foot { text-align: center; color: #9a9080; font-size: 12px; margin-top: 20px; }
   .dt-page mark { background: #ffe27a; color: inherit; padding: 0 1px; border-radius: 2px; }
   .dt-page mark.cur { background: #ff9f43; }
+  /* real-PDF mode: the browser's native viewer handles search/pages/zoom */
+  #dt-reader-bar.pdf input, #dt-reader-bar.pdf .count, #dt-reader-bar.pdf .nav { display: none; }
+  #dt-reader-scroll.pdf { padding: 0; background: #525659; overflow: hidden; }
+  .dt-pdfframe { width: 100%; height: 100%; border: 0; display: block; }
 `;
 
 const escapeHtml = (s) =>
@@ -182,21 +187,50 @@ export function createReader({ onClose } = {}) {
     if (target) target.scrollIntoView({ block: "start", behavior: "smooth" });
   }
 
-  function open(paper) {
-    const blocks = generateDocument(paper);
-    const pages = paginate(blocks);
-    state = { paper, pages, matches: [], cur: -1, term: "" };
-    titleEl.textContent = paper.title;
-    searchEl.value = "";
-    el.classList.add("show"); // show first so layout (page offsets) is measurable
-    render();
-    scroll.scrollTop = 0;
-    requestAnimationFrame(() => updateStatus());
+  // Resolve a real PDF for this paper: an uploaded blob (IndexedDB) wins, else
+  // a committed file at pdfUrl if it actually exists.
+  async function resolveSource(paper) {
+    if (paper.pdfKey) {
+      try {
+        const blob = await getPdf(paper.pdfKey);
+        if (blob) return { url: URL.createObjectURL(blob), blob };
+      } catch (e) { /* fall through */ }
+    }
+    if (paper.pdfUrl) {
+      try {
+        const r = await fetch(asset(paper.pdfUrl), { method: "HEAD" });
+        if (r.ok) return { url: asset(paper.pdfUrl), blob: null };
+      } catch (e) { /* fall through */ }
+    }
+    return null;
+  }
+
+  async function open(paper) {
+    titleEl.textContent = paper.title || paper.pdfName || "document";
+    el.classList.add("show");
+    const src = await resolveSource(paper);
+    if (src) {
+      state = { paper, pdf: src.url, pdfBlob: src.blob };
+      bar.classList.add("pdf");
+      scroll.classList.add("pdf");
+      scroll.innerHTML = `<iframe class="dt-pdfframe" src="${src.url}"></iframe>`;
+    } else {
+      bar.classList.remove("pdf");
+      scroll.classList.remove("pdf");
+      const pages = paginate(generateDocument(paper));
+      state = { paper, pages, matches: [], cur: -1, term: "" };
+      searchEl.value = "";
+      render();
+      scroll.scrollTop = 0;
+      requestAnimationFrame(() => updateStatus());
+    }
   }
 
   function close() {
     if (!el.classList.contains("show")) return;
     el.classList.remove("show");
+    if (state?.pdfBlob && state.pdf) URL.revokeObjectURL(state.pdf);
+    scroll.innerHTML = "";
     state = null;
     onClose?.();
   }
@@ -206,7 +240,7 @@ export function createReader({ onClose } = {}) {
 
   // events
   searchEl.addEventListener("input", () => {
-    if (!state) return;
+    if (!state || state.pdf) return;
     state.term = searchEl.value.trim();
     state.cur = state.term ? 0 : -1;
     render();
@@ -219,7 +253,7 @@ export function createReader({ onClose } = {}) {
     }
   });
   scroll.addEventListener("scroll", () => {
-    if (state) updateStatus();
+    if (state && !state.pdf) updateStatus();
   });
   el.addEventListener("click", (e) => {
     if (e.target === el) close(); // click the dark backdrop to dismiss
@@ -228,19 +262,32 @@ export function createReader({ onClose } = {}) {
     const act = e.target.closest("button")?.dataset.act;
     if (!act || !state) return;
     const pi = currentPageOfScroll();
+    const fn = (state.paper.title || state.paper.pdfName || "document")
+      .toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 40);
     if (act === "close") close();
-    else if (act === "prev") goPage(Math.max(0, pi - 1));
-    else if (act === "next") goPage(Math.min(state.pages.length - 1, pi + 1));
+    else if (act === "prev" && !state.pdf) goPage(Math.max(0, pi - 1));
+    else if (act === "next" && !state.pdf) goPage(Math.min(state.pages.length - 1, pi + 1));
     else if (act === "open") {
-      if (state.paper.url) window.open(state.paper.url, "_blank", "noopener");
+      const link = state.paper.url || state.pdf;
+      if (link) window.open(link, "_blank", "noopener");
     } else if (act === "copy") {
-      const fn = state.paper.title.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 40);
-      downloadPdf(state.pages, fn, { title: state.paper.title });
+      if (state.pdf) {
+        // download the real PDF as-is
+        const a = document.createElement("a");
+        a.href = state.pdf;
+        a.download = state.paper.pdfName || fn + ".pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else {
+        downloadPdf(state.pages, fn, { title: state.paper.title });
+      }
     }
   });
   window.addEventListener("keydown", (e) => {
     if (!isOpen()) return;
     if (e.key === "Escape") { e.stopPropagation(); close(); }
+    else if (state?.pdf) return;
     else if (e.key === "ArrowRight") goPage(Math.min(state.pages.length - 1, currentPageOfScroll() + 1));
     else if (e.key === "ArrowLeft") goPage(Math.max(0, currentPageOfScroll() - 1));
   }, true);
