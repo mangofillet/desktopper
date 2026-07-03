@@ -11,6 +11,8 @@ See plan.md for the full spec. Dev: `npm run dev` · verify: `node verify.mjs <p
 - [x] M7 Real CC0 models — Poly Haven classic_laptop (screen node rotated to ~93°, display plane parented into screen mesh local space, 4:3) + desk_lamp_arm_01 (yaw -2.0; head is local -z — found via lamp-sweep.mjs).
 - [x] Deploy — https://github.com/mangofillet/desktopper → https://mangofillet.github.io/desktopper/ (Pages via Actions; verified live, no console errors). Music gitignored (copyright) so the deployed site plays no tracks until rights-cleared files are added.
 
+- [x] V2 golden-hour revamp (user-directed; v1 preserved as git tag `v1-dusk-study`) — late-afternoon light: sun directional 3.4 from side window + RectArea spill 3.0 + hemi 1.6, exposure 1.2, lamp barely-on (1.3). Window moved to left wall, closed, curtains + rod; poster (now "golden hour") on back wall; potted_plant_04 (CC0) floor right; brighter floor/desk/wall tints; camera maxDistance 2.1 (desk-locked); top book configurable via portfolio.json `book` (default GEB); Matrix reduced to ONE egg (boot line "wake up…") — wallpaper egg + matrix rain removed, sleep screen says "click to wake".
+
 Notes:
 - Playwright pixel-clicks are brittle (papers under headphones); use window.__dt dev hooks (focus/home/wearPhones/os).
 - Lighting balance point: lamp 5.5, RectArea screen 1.0, bloom threshold 0.85, exposure 1.0, hemi 0.85 evening.
