@@ -102,27 +102,26 @@ export function buildScene(scene) {
   const diorama = new THREE.Group();
   diorama.position.set(0.05, 1.52, 0);
   const starBackdrop = new THREE.Mesh(
-    new THREE.PlaneGeometry(6.5, 3.4),
+    new THREE.PlaneGeometry(13, 3.6),
     new THREE.MeshBasicMaterial({ map: skyTexture() })
   );
-  starBackdrop.position.set(0, 0.03, -1.75); // wide enough to never edge-out on a pan
+  starBackdrop.position.set(0, 0.03, -1.75);
   diorama.add(starBackdrop);
   // Shorter pines sitting low in the opening; three depths for parallax.
   // Warm dusk-toned silhouettes: far layer catches a little sunset haze, near
-  // layers fall to near-black.
+  // layers fall to near-black. Very wide (texture tiled) so no edge shows.
   const forestLayers = [
-    { z: -1.35, w: 5.4, h: 0.95, y: -0.34, color: "#4a3a42", base: 350, spread: 42, step: 34, seed: 3 },
-    { z: -1.05, w: 4.6, h: 0.9, y: -0.36, color: "#2a2029", base: 350, spread: 52, step: 28, seed: 7 },
-    { z: -0.8, w: 3.8, h: 0.85, y: -0.38, color: "#150f16", base: 350, spread: 64, step: 24, seed: 12 },
+    { z: -1.35, w: 11, h: 0.95, y: -0.34, color: "#4a3a42", base: 350, spread: 42, step: 34, seed: 3 },
+    { z: -1.05, w: 9.5, h: 0.9, y: -0.36, color: "#2a2029", base: 350, spread: 52, step: 28, seed: 7 },
+    { z: -0.8, w: 8, h: 0.85, y: -0.38, color: "#150f16", base: 350, spread: 64, step: 24, seed: 12 },
   ];
   for (const L of forestLayers) {
+    const map = forestLayerTexture(L);
+    map.wrapS = THREE.RepeatWrapping;
+    map.repeat.x = L.w / 3.4; // keep pine size consistent as the plane widens
     const layer = new THREE.Mesh(
       new THREE.PlaneGeometry(L.w, L.h),
-      new THREE.MeshBasicMaterial({
-        map: forestLayerTexture(L),
-        transparent: true,
-        depthWrite: false,
-      })
+      new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false })
     );
     layer.position.set(0, L.y, L.z);
     diorama.add(layer);
@@ -297,10 +296,8 @@ export function buildScene(scene) {
   laptop.rotation.y = -0.1;
   // The screen is a live canvas: DESKTOPPER OS draws to it every frame it
   // changes, and interactions forwards clicks/keys into it.
-  const os = createOS({
-    config,
-    openUrl: (u) => window.open(asset(u), "_blank", "noopener"),
-  });
+  const os = createOS({ config });
+  os.setHandlers({ openUrl: (u) => window.open(asset(u), "_blank", "noopener") });
   const screenTex = new THREE.CanvasTexture(os.canvas);
   screenTex.colorSpace = THREE.SRGBColorSpace;
   screenTex.anisotropy = 8;
@@ -558,7 +555,7 @@ export function buildScene(scene) {
   const frame = new THREE.Group();
   frame.position.set(0.68, TOP, -0.2);
   frame.rotation.y = -0.5;
-  const frameBorder = box(0.11, 0.14, 0.012, mat(0x3a2b1e, { roughness: 0.5 }));
+  const frameBorder = box(0.11, 0.14, 0.012, mat(0xd8d4cc, { roughness: 0.5 }));
   frameBorder.position.y = 0.07;
   frameBorder.rotation.x = -0.12;
   const photoCanvas = document.createElement("canvas");
@@ -575,17 +572,30 @@ export function buildScene(scene) {
   pctx.arc(64, 70, 26, 0, Math.PI * 2); // head silhouette
   pctx.fill();
   pctx.fillRect(30, 96, 68, 64); // shoulders
-  // Owner-supplied photo (edit mode) overrides the generated silhouette.
-  const photoTex = config.photoImage
-    ? pbr(config.photoImage, { srgb: true })
-    : (() => {
-        const t = new THREE.CanvasTexture(photoCanvas);
-        t.colorSpace = THREE.SRGBColorSpace;
-        return t;
-      })();
+  // Owner-supplied photo (edit mode) overrides the generated silhouette, and
+  // the frame resizes to the uploaded image's aspect ratio.
+  const photoTex0 = new THREE.CanvasTexture(photoCanvas);
+  photoTex0.colorSpace = THREE.SRGBColorSpace;
+  if (config.photoImage) {
+    const img = new Image();
+    img.onload = () => {
+      const a = img.width / img.height;
+      const t = new THREE.CanvasTexture(img);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 8;
+      photo.material.map = t;
+      photo.material.needsUpdate = true;
+      const h = 0.13, w = h * a;
+      photo.geometry.dispose();
+      photo.geometry = new THREE.PlaneGeometry(w, h);
+      frameBorder.geometry.dispose();
+      frameBorder.geometry = new THREE.BoxGeometry(w + 0.024, h + 0.028, 0.012);
+    };
+    img.src = asset(config.photoImage);
+  }
   const photo = new THREE.Mesh(
     new THREE.PlaneGeometry(0.085, 0.11),
-    new THREE.MeshStandardMaterial({ map: photoTex, roughness: 0.5 })
+    new THREE.MeshStandardMaterial({ map: photoTex0, roughness: 0.5 })
   );
   photo.position.set(0, 0, 0.007);
   frameBorder.add(photo);
@@ -595,8 +605,8 @@ export function buildScene(scene) {
   frame.add(frameBorder, strut);
   root.add(frame);
   interactables.push({
-    id: "bio",
-    kind: "bio",
+    id: "photo",
+    kind: "photo",
     object: frame,
     focus: { pos: [0.45, TOP + 0.16, 0.16], look: [0.68, TOP + 0.08, -0.2] },
   });
@@ -682,8 +692,7 @@ export function buildScene(scene) {
       roughness: 0.92,
     })
   );
-  cvSheet.rotation.x = -Math.PI / 2;
-  cvSheet.rotation.z = Math.PI / 2;
+  cvSheet.rotation.x = -Math.PI / 2; // portrait, aligned with the board (no extra spin)
   cvSheet.position.y = 0.009;
   cvSheet.receiveShadow = true;
   clip.add(cvSheet);
@@ -844,15 +853,56 @@ export function buildScene(scene) {
     map: posterTexture(config.poster ?? {}),
     roughness: 0.85,
   });
-  if (config.poster?.image) {
-    posterMat.map = pbr(config.poster.image, { srgb: true });
-  }
   const posterSheet = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.735), posterMat);
   posterSheet.receiveShadow = true;
   const pFrame = box(0.56, 0.775, 0.015, mat(0x3a352e, { roughness: 0.5 }));
   pFrame.position.z = -0.009;
   poster.add(pFrame, posterSheet);
   root.add(poster);
+  // Uploaded poster art: composite the title/subtitle over the image and
+  // resize the frame to the image's aspect ratio.
+  if (config.poster?.image) {
+    const img = new Image();
+    img.onload = () => {
+      const a = img.width / img.height;
+      const cw = 512, ch = Math.round(512 / a);
+      const cvs = document.createElement("canvas");
+      cvs.width = cw;
+      cvs.height = ch;
+      const x = cvs.getContext("2d");
+      x.drawImage(img, 0, 0, cw, ch);
+      const title = config.poster.title, sub = config.poster.subtitle;
+      if (title || sub) {
+        const g = x.createLinearGradient(0, ch * 0.55, 0, ch);
+        g.addColorStop(0, "rgba(0,0,0,0)");
+        g.addColorStop(1, "rgba(0,0,0,0.7)");
+        x.fillStyle = g;
+        x.fillRect(0, ch * 0.55, cw, ch * 0.45);
+        x.textAlign = "left";
+        if (title) {
+          x.fillStyle = "#fdf6e8";
+          x.font = `bold ${Math.round(cw * 0.062)}px Georgia, serif`;
+          x.fillText(title, cw * 0.06, ch - (sub ? ch * 0.075 : ch * 0.05));
+        }
+        if (sub) {
+          x.fillStyle = "#e0d6c4";
+          x.font = `${Math.round(cw * 0.034)}px monospace`;
+          x.fillText(sub, cw * 0.06, ch - ch * 0.03);
+        }
+      }
+      const t = new THREE.CanvasTexture(cvs);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 8;
+      posterMat.map = t;
+      posterMat.needsUpdate = true;
+      const h = 0.75, w = Math.min(0.66, h * a);
+      posterSheet.geometry.dispose();
+      posterSheet.geometry = new THREE.PlaneGeometry(w, h);
+      pFrame.geometry.dispose();
+      pFrame.geometry = new THREE.BoxGeometry(w + 0.04, h + 0.04, 0.015);
+    };
+    img.src = asset(config.poster.image);
+  }
 
   // ================= Bookshelf (left wall) with trailing vine =================
   const shelfG = new THREE.Group();

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { playTrack, stopTrack, startAmbience } from "./audio.js";
 import { asset } from "./assets.js";
 import { createReader } from "./reader.js";
+import { getPdf } from "./store.js";
 
 // Hover (lift + warm emissive glow) and click-to-focus camera flights.
 // Interactables are registered by scene.js as:
@@ -153,6 +154,46 @@ export function setupInteractions({
   // ---------- document reader (papers open here) ----------
   const reader = createReader({ onClose: () => goHome() });
 
+  // ---------- simple media player for the laptop's audio/video files ----------
+  const mediaOverlay = document.createElement("div");
+  mediaOverlay.id = "dt-media";
+  mediaOverlay.style.cssText =
+    "position:fixed;inset:0;z-index:42;display:none;align-items:center;justify-content:center;" +
+    "background:rgba(6,5,4,0.82);backdrop-filter:blur(6px)";
+  mediaOverlay.innerHTML =
+    `<div style="position:relative;max-width:88vw;max-height:86vh">` +
+    `<button id="dt-media-x" style="position:absolute;top:-34px;right:0;background:#2b2620;color:#ece3d2;` +
+    `border:1px solid #554b3d;border-radius:6px;padding:5px 11px;cursor:pointer;font:13px system-ui">close ✕</button>` +
+    `<div id="dt-media-slot"></div></div>`;
+  document.body.appendChild(mediaOverlay);
+  const mediaSlot = mediaOverlay.querySelector("#dt-media-slot");
+  function closeMedia() {
+    mediaSlot.innerHTML = "";
+    mediaOverlay.style.display = "none";
+  }
+  mediaOverlay.querySelector("#dt-media-x").addEventListener("click", closeMedia);
+  mediaOverlay.addEventListener("click", (e) => { if (e.target === mediaOverlay) closeMedia(); });
+  async function playMedia(m) {
+    let src = m?.url ? asset(m.url) : m?.dataUrl || null;
+    if (!src && m?.mediaKey) {
+      const blob = await getPdf(m.mediaKey); // IndexedDB stores media blobs too
+      if (blob) src = URL.createObjectURL(blob);
+    }
+    if (!src) return;
+    if (m.type === "video") {
+      mediaSlot.innerHTML = `<video src="${src}" controls autoplay style="max-width:88vw;max-height:82vh;border-radius:8px"></video>`;
+      mediaOverlay.style.display = "flex";
+    } else {
+      mediaSlot.innerHTML =
+        `<div style="background:#1c1915;color:#e8ddca;padding:26px 30px;border-radius:10px;font:14px system-ui;min-width:280px">` +
+        `<div style="margin-bottom:12px">♪ ${m.name || "audio"}</div>` +
+        `<audio src="${src}" controls autoplay style="width:100%"></audio></div>`;
+      mediaOverlay.style.display = "flex";
+    }
+  }
+
+  os?.setHandlers({ openReader: (item) => reader.open(item), playMedia });
+
   // ---------- overlay content ----------
   function showCard(item) {
     const d = item.data;
@@ -161,10 +202,15 @@ export function setupInteractions({
       // The paper is picked up into the full-screen reader — no side card.
       reader.open(d);
       return;
-    } else if (item.kind === "bio") {
+    } else if (item.kind === "cv") {
+      // Opens the actual CV PDF in the reader, not an external site.
+      reader.open({ title: "Curriculum Vitae", pdfUrl: config.cvUrl, pdfName: "cv.pdf" });
+      return;
+    } else if (item.kind === "photo") {
+      // The photo is its own small identity card — the full bio lives on the
+      // computer (about.txt), not on the desk.
       html = `<h2>${config.name}</h2>
-        <div class="meta">${config.tagline}</div>
-        <p>${config.bio}</p>`;
+        <div class="meta">${config.tagline || ""}</div>`;
     } else if (item.kind === "contact") {
       const l = config.links;
       html = `<h2>say hello</h2><ul>
@@ -173,19 +219,8 @@ export function setupInteractions({
         ${l.scholar ? `<li><a href="${l.scholar}" target="_blank" rel="noopener">scholar</a></li>` : ""}
         ${l.linkedin ? `<li><a href="${l.linkedin}" target="_blank" rel="noopener">linkedin</a></li>` : ""}
       </ul>`;
-    } else if (item.kind === "projects") {
-      const li = (p) =>
-        `<li><a href="${p.url}" target="_blank" rel="noopener">${p.name}</a><div class="blurb">${p.blurb}</div></li>`;
-      const ongoing = config.projects.filter((p) => (p.status || "ongoing") !== "planned");
-      const planned = config.projects.filter((p) => p.status === "planned");
-      html = `<h2>ongoing &amp; planned projects</h2>
-        ${ongoing.length ? `<div class="meta">ongoing</div><ul>${ongoing.map(li).join("")}</ul>` : ""}
-        ${planned.length ? `<div class="meta">planned</div><ul>${planned.map(li).join("")}</ul>` : ""}`;
-    } else if (item.kind === "cv") {
-      html = `<h2>curriculum vitae</h2>
-        <p>The full academic record — positions, publications, teaching.</p>
-        <a class="btn" href="${asset(config.cvUrl)}" target="_blank" rel="noopener">download pdf →</a>`;
     }
+    // projects and cv have no side card — they live on the computer.
     if (!html) return; // e.g. laptop — its screen is the content, no card
     card.innerHTML = html;
     overlay.classList.add("show");
@@ -251,6 +286,7 @@ export function setupInteractions({
   let floppyHome = null;
   const slotQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -0.1, 0));
 
+  let floppyInserted = false;
   function startFloppy(dir) {
     const f = projItem?.floppy;
     if (!f) return;
@@ -262,6 +298,8 @@ export function setupInteractions({
       ]);
     }
     floppyDir = dir;
+    floppyInserted = dir > 0;
+    os?.setFloppy(floppyInserted); // mount/unmount the projects folder in the OS
   }
 
   // ---------- camera flights ----------
@@ -286,14 +324,15 @@ export function setupInteractions({
     hovered = null;
     renderer.domElement.style.cursor = "default";
     back.classList.add("show");
-    if (item === projItem) startFloppy(1);
+    if (item === projItem && !floppyInserted) startFloppy(1);
     if (item.kind === "laptop") os?.wake();
     flyTo(item.focus, () => showCard(item));
   }
 
   function goHome() {
     if (!focused) return;
-    if (focused === projItem) startFloppy(-1);
+    // the floppy stays inserted after viewing projects — eject it by clicking
+    // the disk again, not by leaving.
     focused = null;
     setFocusDim?.(false);
     back.classList.remove("show");
@@ -318,6 +357,13 @@ export function setupInteractions({
     if (hovered?.id.startsWith("speaker")) {
       hovered.wobbleT = 0;
       toggleSpeakers();
+      return;
+    }
+    // Clicking the floppy while it's already in the drive ejects it (and
+    // unmounts the projects folder from the OS).
+    if (hovered === projItem && floppyInserted && focused !== projItem) {
+      startFloppy(-1);
+      showCaption("floppy ejected");
       return;
     }
     // While on the laptop, clicks land on the OS screen.
@@ -351,6 +397,16 @@ export function setupInteractions({
     if (focused?.kind === "laptop" && os?.key(e)) e.preventDefault();
   });
   window.addEventListener("pointerdown", () => startAmbience(), { once: true });
+
+  // Mouse wheel over the laptop screen scrolls the focused OS window.
+  renderer.domElement.addEventListener("wheel", (e) => {
+    if (focused?.kind !== "laptop" || !screenMesh || !os) return;
+    raycaster.setFromCamera(pointer, camera);
+    const hit = raycaster.intersectObject(screenMesh, false)[0];
+    if (hit?.uv && os.wheel(hit.uv.x * 640, (1 - hit.uv.y) * 480, e.deltaY)) {
+      e.preventDefault();
+    }
+  }, { passive: false });
 
   if (import.meta.env?.DEV) {
     // deterministic hooks for verify.mjs — not shipped in production builds

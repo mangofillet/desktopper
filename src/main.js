@@ -5,6 +5,7 @@ import { setupPost } from "./post.js";
 import { setupInteractions } from "./interactions.js";
 import { config } from "./store.js";
 import { setupEditor } from "./editor.js";
+import { createHero } from "./hero.js";
 
 const app = document.getElementById("app");
 
@@ -27,8 +28,9 @@ const camera = new THREE.PerspectiveCamera(
   0.05,
   50
 );
-// Hero shot: slightly above and to the right of dead-center, looking at the desk.
-camera.position.set(0.55, 1.35, 1.55);
+// Hero shot: slightly above and to the right of dead-center, looking at the
+// desk. Starts closer — nearly at the desk.
+camera.position.set(0.42, 1.16, 1.12);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0.82, -0.1);
@@ -51,6 +53,10 @@ const interactions = setupInteractions({
   os, screenMesh: screen, editState,
 });
 setupEditor({ renderer, camera, controls, editables, editState });
+
+// Welcome hero — fades away the moment the visitor clicks into the room.
+const hero = createHero(config);
+renderer.domElement.addEventListener("pointerdown", () => hero.dismiss(), { once: true });
 
 if (import.meta.env?.DEV) window.__diag = { scene, camera, screen, interactables, THREE };
 

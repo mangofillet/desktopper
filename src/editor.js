@@ -92,6 +92,7 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
       <button data-tab="profile">Profile</button>
       <button data-tab="papers">Papers</button>
       <button data-tab="projects">Projects</button>
+      <button data-tab="laptop">Laptop</button>
     </div>
     <div id="dt-edit-body">
       <div id="dt-edit-sel"></div>
@@ -260,6 +261,9 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
     let html = "", binders = [];
     if (tab === "look") {
       html = `
+        <h4>Welcome hero</h4>
+        ${field("Title", config.hero?.title)}
+        <label>Intro</label><textarea data-bind>${config.hero?.body ?? ""}</textarea>
         <h4>Poster</h4>
         ${field("Title", config.poster?.title)}
         ${field("Subtitle", config.poster?.subtitle)}
@@ -270,6 +274,8 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
         ${field("Title", config.book?.title)}
         ${field("Author", config.book?.author)}`;
       binders = [
+        (v) => ((config.hero ??= {}).title = v),
+        (v) => ((config.hero ??= {}).body = v),
         (v) => ((config.poster ??= {}).title = v),
         (v) => ((config.poster ??= {}).subtitle = v),
         (v) => ((config.book ??= {}).title = v),
@@ -352,6 +358,48 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
       (config.projects || []).forEach((p) => {
         binders.push((v) => (p.name = v), (v) => (p.blurb = v), (v) => (p.url = v));
       });
+    } else if (tab === "laptop") {
+      const L = (config.laptop ??= {});
+      L.contact ??= {}; L.papers ??= []; L.presentations ??= []; L.media ??= [];
+      L.secret ??= { password: "", projects: [] };
+      html = `
+        <div style="color:#8c8575;font-size:11px;margin-bottom:8px">The laptop's own contents — separate from the desk.</div>
+        <label>About (about.txt)</label><textarea data-bind>${L.about ?? ""}</textarea>
+        <h4>Contact</h4>
+        ${field("Email", L.contact.email)}
+        ${field("GitHub", L.contact.github)}
+        ${field("Scholar", L.contact.scholar)}
+        ${field("LinkedIn", L.contact.linkedin)}
+        <h4>Papers (PDFs)</h4>
+        <input type="file" accept="application/pdf" multiple data-lpdfs="papers">
+        ${L.papers.map((p, i) => `<div class="row"><div class="rowhead"><b>${p.title || p.pdfName || "untitled"}</b>
+          <button class="mini del" data-ldel="papers:${i}">✕</button></div>
+          <div style="font-size:11px;color:#9c9280">PDF: ${p.pdfName || "none"}</div></div>`).join("")}
+        <h4>Data Analytics &amp; Science Presentations (PDFs)</h4>
+        <input type="file" accept="application/pdf" multiple data-lpdfs="presentations">
+        ${L.presentations.map((p, i) => `<div class="row"><div class="rowhead"><b>${p.title || p.pdfName || "untitled"}</b>
+          <button class="mini del" data-ldel="presentations:${i}">✕</button></div>
+          <div style="font-size:11px;color:#9c9280">PDF: ${p.pdfName || "none"}</div></div>`).join("")}
+        <h4>Media (mp3 / video)</h4>
+        <input type="file" accept="audio/*,video/*" multiple data-lmedia>
+        ${L.media.map((m, i) => `<div class="row"><div class="rowhead"><b>${m.type === "video" ? "▶" : "♪"} ${m.name}</b>
+          <button class="mini del" data-ldel="media:${i}">✕</button></div></div>`).join("")}
+        <h4>Secret folder</h4>
+        ${field("Password", L.secret.password)}
+        <div style="font-size:11px;color:#9c9280;margin:2px 0 6px">Projects revealed after the password:</div>
+        ${L.secret.projects.map((p, i) => `<div class="row"><div class="rowhead"><b>${p.name || "untitled"}</b>
+          <button class="mini del" data-ldel="secret:${i}">✕</button></div>
+          ${field("Name", p.name)}<label>Blurb</label><textarea data-lbind="secret:${i}:blurb">${p.blurb ?? ""}</textarea></div>`).join("")}
+        <button class="mini add" data-ladd="secret">+ add secret project</button>`;
+      binders = [
+        (v) => (L.about = v),
+        (v) => (L.contact.email = v),
+        (v) => (L.contact.github = v),
+        (v) => (L.contact.scholar = v),
+        (v) => (L.contact.linkedin = v),
+      ];
+      // secret project name fields are also data-bind, appended in order
+      L.secret.projects.forEach((p) => binders.push((v) => (p.name = v)));
     }
     tabBody.innerHTML = html;
     bindInputs(tabBody, binders);
@@ -384,7 +432,58 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
     saveConfig();
   }
 
+  const mediaKey = () => "media_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
   function wireStructural(tab) {
+    // ---- Laptop tab: PDF/media uploads, deletes, secret projects ----
+    const L = config.laptop;
+    tabBody.querySelectorAll("[data-lpdfs]").forEach((inp) => {
+      inp.addEventListener("change", async () => {
+        const sect = inp.dataset.lpdfs; // 'papers' | 'presentations'
+        L[sect] ??= [];
+        for (const f of inp.files) {
+          const item = { title: "" };
+          L[sect].push(item);
+          await attachPdf(item, f);
+        }
+        saveConfig();
+        renderTab(tab);
+      });
+    });
+    const lmedia = tabBody.querySelector("[data-lmedia]");
+    if (lmedia) lmedia.addEventListener("change", async () => {
+      L.media ??= [];
+      for (const f of lmedia.files) {
+        const key = mediaKey();
+        await savePdf(key, f); // IndexedDB stores any blob
+        L.media.push({ name: f.name, type: f.type.startsWith("video") ? "video" : "audio", mediaKey: key });
+      }
+      saveConfig();
+      renderTab(tab);
+    });
+    tabBody.querySelectorAll("[data-ldel]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const [sect, i] = btn.dataset.ldel.split(":");
+        const arr = sect === "secret" ? L.secret.projects : L[sect];
+        arr.splice(+i, 1);
+        saveConfig();
+        renderTab(tab);
+      });
+    });
+    tabBody.querySelectorAll("[data-lbind]").forEach((el) => {
+      el.addEventListener("input", () => {
+        const [, i, key] = el.dataset.lbind.split(":");
+        L.secret.projects[+i][key] = el.value;
+        saveConfig();
+      });
+    });
+    const ladd = tabBody.querySelector('[data-ladd="secret"]');
+    if (ladd) ladd.addEventListener("click", () => {
+      (L.secret.projects ??= []).push({ name: "New project", blurb: "", url: "" });
+      saveConfig();
+      renderTab(tab);
+    });
+
     // bulk: one paper per uploaded PDF
     const bulk = tabBody.querySelector("[data-pdfs]");
     if (bulk) bulk.addEventListener("change", async () => {

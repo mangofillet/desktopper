@@ -56,12 +56,11 @@ if (toastShown < 1) errors.push("FLOW: headphones toast did not appear");
 await page.evaluate(() => window.__dt.takeOffPhones());
 await page.waitForTimeout(1500);
 
-// Projects: floppy flies into the laptop drive, card lists projects.
+// Projects: clicking the floppy inserts it (no side card — projects live on
+// the computer). Just confirm the flow runs without error and inserts.
 await page.evaluate(() => window.__dt.focus("projects"));
 await page.waitForTimeout(2600);
 await page.screenshot({ path: `${SHOT}/07-floppy-inserted.png` });
-const projCard = await page.locator("#dt-card li a").count();
-if (projCard < 1) errors.push("FLOW: projects card missing links");
 await page.evaluate(() => window.__dt.home());
 await page.waitForTimeout(1800);
 

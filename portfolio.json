@@ -9,6 +9,10 @@
     "linkedin": "https://www.linkedin.com"
   },
   "cvUrl": "/cv.pdf",
+  "hero": {
+    "title": "Hello, I'm J. Doe",
+    "body": "Physicist, tinkerer, and occasional builder of odd little worlds like this one. Have a look around the desk — the papers, the mug, the old laptop. Everything's clickable."
+  },
   "book": { "title": "Bardo Thodol", "author": "The Tibetan Book of the Dead" },
   "poster": { "title": "night shift", "subtitle": "stars / slow work" },
   "papers": [
@@ -68,5 +72,45 @@
     { "title": "Dualism", "artist": "", "url": "/audio/dualism.mp3" },
     { "title": "Washing Machine Heart", "artist": "Mitski", "url": "/audio/washing-machine-heart.mp3" },
     { "title": "Take My Soul", "artist": "Thievery Corporation", "url": "/audio/take-my-soul.mp3" }
-  ]
+  ],
+  "laptop": {
+    "welcome": {
+      "title": "Welcome",
+      "body": "Hi — I'm J. Doe. Make yourself at home. Poke around the desk, or open the laptop for my papers, talks and side projects."
+    },
+    "about": "I'm a physicist working on emergent structure in complex systems. This machine holds my writing, presentations and projects — the tidy version of the clutter on the desk.",
+    "contact": {
+      "email": "hi@example.com",
+      "github": "https://github.com/mangofillet",
+      "scholar": "https://scholar.google.com",
+      "linkedin": "https://www.linkedin.com"
+    },
+    "papers": [
+      {
+        "title": "Emergent Structure in Deep Latent Spaces",
+        "authors": "J. Doe, A. N. Other",
+        "venue": "NeurIPS 2024",
+        "abstract": "Latent representations self-organise into geometric structures mirroring the symmetries of their training data."
+      },
+      {
+        "title": "Scaling Laws for Coupled Oscillator Networks",
+        "authors": "J. Doe",
+        "venue": "Chaos 2021",
+        "abstract": "Synchronisation thresholds follow a universal scaling collapse across five orders of magnitude."
+      }
+    ],
+    "presentations": [
+      {
+        "title": "Intro to Diffusion Models (guest lecture)",
+        "abstract": "Slides walking through score-based generative modelling from first principles."
+      }
+    ],
+    "media": [],
+    "secret": {
+      "password": "opensesame",
+      "projects": [
+        { "name": "Project Nightingale", "blurb": "Something quiet, still in the works.", "url": "" }
+      ]
+    }
+  }
 }
