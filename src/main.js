@@ -67,6 +67,36 @@ window.addEventListener("resize", () => {
   post.setSize(window.innerWidth, window.innerHeight);
 });
 
+// ---- effects / performance toggle (default ON) ----
+// Off = skip post-processing (bloom/grain/vignette), shadows and hi-DPI, for a
+// big speed-up on weak machines.
+const fx = { on: (() => { try { return localStorage.getItem("desktopper.fx") !== "off"; } catch { return true; } })() };
+function applyFx() {
+  renderer.setPixelRatio(fx.on ? Math.min(window.devicePixelRatio, 2) : 1);
+  renderer.shadowMap.enabled = fx.on;
+  scene.traverse((o) => {
+    if (o.isMesh && o.material) {
+      (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => (m.needsUpdate = true));
+    }
+  });
+}
+const fxBtn = document.createElement("button");
+fxBtn.id = "dt-fx";
+fxBtn.style.cssText =
+  "position:fixed;right:16px;bottom:16px;z-index:30;padding:7px 13px;border-radius:999px;cursor:pointer;" +
+  "background:rgba(20,17,13,0.8);border:1px solid rgba(255,200,140,0.28);color:#ece0cc;" +
+  "font:12.5px system-ui,sans-serif";
+const fxLabel = () => (fxBtn.textContent = fx.on ? "✦ effects: on" : "effects: off");
+fxLabel();
+document.body.appendChild(fxBtn);
+fxBtn.addEventListener("click", () => {
+  fx.on = !fx.on;
+  try { localStorage.setItem("desktopper.fx", fx.on ? "on" : "off"); } catch {}
+  applyFx();
+  fxLabel();
+});
+applyFx();
+
 const clock = new THREE.Clock();
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
@@ -74,6 +104,10 @@ renderer.setAnimationLoop(() => {
   animateScene(t);
   interactions.tick(t, dt);
   if (controls.enabled) controls.update();
-  post.tick(t);
-  post.composer.render();
+  if (fx.on) {
+    post.tick(t);
+    post.composer.render();
+  } else {
+    renderer.render(scene, camera);
+  }
 });

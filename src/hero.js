@@ -5,18 +5,18 @@ const css = /* css */ `
   #dt-hero {
     position: fixed; inset: 0 60% 0 0; z-index: 25; pointer-events: none;
     display: flex; align-items: center; padding: 0 5vw;
-    background: linear-gradient(100deg, rgba(10,8,6,0.78) 40%, rgba(10,8,6,0) 100%);
+    background: linear-gradient(100deg, rgba(230,219,196,1) 82%, rgba(230,219,196,0) 100%);
     transition: opacity 0.7s ease, transform 0.7s ease;
-    font-family: Georgia, "Times New Roman", serif; color: #f2e9d8;
+    font-family: Georgia, "Times New Roman", serif; color: #3a3226;
   }
   #dt-hero.gone { opacity: 0; transform: translateX(-24px); }
   #dt-hero .panel { max-width: 420px; }
-  #dt-hero h1 { font-size: clamp(26px, 3.4vw, 40px); line-height: 1.15; margin: 0 0 16px; font-weight: 700; }
-  #dt-hero p { font-size: clamp(14px, 1.3vw, 17px); line-height: 1.6; color: #d8ccb8; margin: 0 0 22px; }
+  #dt-hero h1 { font-size: clamp(26px, 3.4vw, 40px); line-height: 1.15; margin: 0 0 16px; font-weight: 700; color: #2e281e; }
+  #dt-hero p { font-size: clamp(14px, 1.3vw, 17px); line-height: 1.6; color: #574d3c; margin: 0 0 22px; }
   #dt-hero .hint { font-family: system-ui, sans-serif; font-size: 12.5px; letter-spacing: 0.5px;
-    color: #b6a988; text-transform: uppercase; opacity: 0.85;
+    color: #8a7a58; text-transform: uppercase; opacity: 0.9;
     animation: dt-hero-pulse 2.4s ease-in-out infinite; }
-  @keyframes dt-hero-pulse { 0%,100% { opacity: 0.5 } 50% { opacity: 0.95 } }
+  @keyframes dt-hero-pulse { 0%,100% { opacity: 0.55 } 50% { opacity: 1 } }
 `;
 
 const esc = (s) =>
