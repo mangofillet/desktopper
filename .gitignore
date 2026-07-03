@@ -4,5 +4,7 @@ dist/
 
 # User-supplied commercial music — not licensed for redistribution.
 # Drop your own files in public/audio/ locally; portfolio.json points at them.
-public/audio/
+public/audio/*
+# …but the royalty-free forest birdsong ambience ships with the site.
+!public/audio/birdsong.mp3
 Assets/
