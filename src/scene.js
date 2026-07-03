@@ -982,7 +982,12 @@ export function buildScene(scene) {
     dim += (dimTarget - dim) * 0.05;
     const base = 4.6 + Math.sin(t * 1.7) * 0.12 + Math.sin(t * 7.3) * 0.04;
     lampLight.intensity = lampOn ? base * (1 - dim * 0.55) : 0;
-    screenGlow.intensity = 0.25 + Math.sin(t * 11) * 0.015;
+    // The screen only floods the desk when it's actually on. A sleeping laptop
+    // (the "click to wake" screen) barely glows, so switching the lamp off
+    // doesn't leave a bright pool of screen-light on the desk.
+    const screenLit = os.mode === "on" ? 1 : 0.22;
+    screenGlow.intensity = (0.25 + Math.sin(t * 11) * 0.015) * screenLit;
+    screenLight.intensity = screenLit;
     // Speaker LEDs: steady green with a faint breathe when on, dim red when off.
     if (speakersOn) {
       const pulse = 0.5 + 0.5 * Math.sin(t * 2.4);

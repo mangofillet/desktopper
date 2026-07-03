@@ -76,6 +76,21 @@ function rampGain(a, to, dur) {
   g.linearRampToValueAtTime(to, t + dur);
 }
 
+// Browsers start an AudioContext "suspended" and only let it run after a user
+// gesture. We call startAmbience() immediately on load and try to resume right
+// away; if the browser blocks it, the first pointer/key/touch resumes it.
+function resumeCtx() {
+  const ctx = ambience?.ctx;
+  if (!ctx || ctx.state === "running") return;
+  ctx.resume().catch(() => {});
+  const evs = ["pointerdown", "keydown", "touchstart"];
+  const kick = () => {
+    ctx.resume().catch(() => {});
+    if (ctx.state === "running") evs.forEach((e) => window.removeEventListener(e, kick));
+  };
+  evs.forEach((e) => window.addEventListener(e, kick));
+}
+
 export async function startAmbience() {
   if (ambience) return;
   try {
@@ -85,6 +100,7 @@ export async function startAmbience() {
     gain.connect(ctx.destination);
     ambience = { ctx, gain };
     if (import.meta.env?.DEV) window.__ambVol = () => ambience?.gain.gain.value ?? -1;
+    resumeCtx(); // begin resuming even while the buffer is still downloading
     const buf = await fetch(asset("/audio/birdsong.mp3"))
       .then((r) => r.arrayBuffer())
       .then((a) => ctx.decodeAudioData(a));
@@ -94,6 +110,7 @@ export async function startAmbience() {
     src.connect(gain);
     src.start();
     if (!anyPlaying()) rampGain(ambience, AMB_VOL, 4);
+    resumeCtx(); // in case the gesture landed before the buffer was ready
   } catch (e) {
     ambience = null;
   }

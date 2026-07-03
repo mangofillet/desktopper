@@ -409,7 +409,9 @@ export function setupInteractions({
     // Terminal typing while the laptop is focused.
     if (focused?.kind === "laptop" && os?.key(e)) e.preventDefault();
   });
-  window.addEventListener("pointerdown", () => startAmbience(), { once: true });
+  // Kick the birdsong off immediately; startAmbience() handles the browser's
+  // autoplay gate internally (resumes on the first gesture if blocked).
+  startAmbience();
 
   // Mouse wheel over the laptop screen scrolls the focused OS window.
   renderer.domElement.addEventListener("wheel", (e) => {
