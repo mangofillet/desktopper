@@ -17,23 +17,32 @@ page.on("console", (m) => {
 page.on("pageerror", (e) => errors.push("PAGEERROR: " + e.message));
 
 await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
-await page.waitForTimeout(1500);
+await page.waitForTimeout(5200); // let the async laptop model load
 await page.screenshot({ path: `${SHOT}/01-hero.png` });
 
-// Hover the big left paper: it should lift + glow, cursor becomes pointer.
-await page.mouse.move(400, 560);
+// Focus a paper → it's picked up into the full-screen reader.
+await page.evaluate(() => window.__dt.focus("paper-1"));
+await page.waitForTimeout(2200);
+await page.screenshot({ path: `${SHOT}/03-reader.png` });
+const pages = await page.locator("#dt-reader .dt-page").count();
+if (pages < 2) errors.push(`FLOW: reader should have multiple pages, got ${pages}`);
+
+// Search a common term and confirm matches highlight.
+await page.fill("#dt-reader input", "the");
 await page.waitForTimeout(400);
-await page.screenshot({ path: `${SHOT}/02-hover-paper.png` });
+const matchCount = await page.locator("#dt-reader mark").count();
+if (matchCount < 1) errors.push("FLOW: reader search produced no highlights");
+await page.screenshot({ path: `${SHOT}/03b-reader-search.png` });
 
-// Click it: cinematic flight (~1.2s), then the reading card with "read →".
-await page.mouse.click(400, 560);
-await page.waitForTimeout(2600);
-await page.screenshot({ path: `${SHOT}/03-paper-focus.png` });
-const readBtn = await page.locator("#dt-card a.btn").count();
-if (readBtn < 1) errors.push("FLOW: paper focus card missing read button");
+// "Take a copy" should trigger a real PDF download.
+const dl = page.waitForEvent("download", { timeout: 5000 }).catch(() => null);
+await page.click('#dt-reader button[data-act="copy"]');
+const download = await dl;
+if (!download) errors.push("FLOW: take-a-copy did not download a PDF");
+else if (!download.suggestedFilename().endsWith(".pdf")) errors.push("FLOW: download is not a .pdf");
 
-// Esc flies home and re-enables orbit.
-await page.keyboard.press("Escape");
+// Close the reader (flies home).
+await page.click('#dt-reader button[data-act="close"]');
 await page.waitForTimeout(1600);
 await page.screenshot({ path: `${SHOT}/04-back-home.png` });
 
@@ -81,6 +90,6 @@ if (errors.length) {
   console.log("PROBLEMS:\n" + errors.join("\n"));
   process.exitCode = 1;
 } else {
-  console.log("OK — hero, hover, paper focus (card+link), home, laptop focus all clean.");
+  console.log("OK — hero, reader (pages+search+PDF download), home, projects, laptop OS all clean.");
 }
 await browser.close();

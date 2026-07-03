@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { playTrack, stopTrack, startAmbience } from "./audio.js";
 import { asset } from "./assets.js";
+import { createReader } from "./reader.js";
 
 // Hover (lift + warm emissive glow) and click-to-focus camera flights.
 // Interactables are registered by scene.js as:
@@ -148,15 +149,17 @@ export function setupInteractions({
     });
   }
 
+  // ---------- document reader (papers open here) ----------
+  const reader = createReader({ onClose: () => goHome() });
+
   // ---------- overlay content ----------
   function showCard(item) {
     const d = item.data;
     let html = "";
     if (item.kind === "paper") {
-      html = `<h2>${d.title}</h2>
-        <div class="meta">${d.authors} — ${d.venue} ${d.year}</div>
-        <p>${d.abstract}</p>
-        <a class="btn" href="${d.url}" target="_blank" rel="noopener">read →</a>`;
+      // The paper is picked up into the full-screen reader — no side card.
+      reader.open(d);
+      return;
     } else if (item.kind === "bio") {
       html = `<h2>${config.name}</h2>
         <div class="meta">${config.tagline}</div>
@@ -360,8 +363,8 @@ export function setupInteractions({
 
   // ---------- per-frame ----------
   function tick(t, dt) {
-    // raycast hover (skip mid-flight)
-    if (!flight) {
+    // raycast hover (skip mid-flight and while the reader is up)
+    if (!flight && !reader.isOpen()) {
       raycaster.setFromCamera(pointer, camera);
       const hits = raycaster.intersectObjects(hitMeshes, false);
       const item = hits.length ? meshToItem.get(hits[0].object) : null;
