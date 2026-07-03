@@ -1,0 +1,17 @@
+# Desktopper — Progress
+
+See plan.md for the full spec. Dev: `npm run dev` · verify: `node verify.mjs <port>` (screenshots → `.verify/`) · probe: `node probe.mjs <port>` · lamp pose sweep: `node lamp-sweep.mjs <port>` · CV regen: `node make-cv.mjs`.
+
+- [x] M1 Blockout + camera rig — approved
+- [x] M2 Lighting/materials/post — Poly Haven CC0 textures, canvas-generated content textures, bloom+vignette+grain. Evening/dusk ambience per user (was night); treeline horizon, no buildings.
+- [x] M3 Interactions — hover lift+glow, 1.2s cinematic flights, Esc/click-away home, lamp dims on focus (close-ups blow out otherwise). Papers→abstract card+DOI, floppy→arcs into front drive slot (probe-tuned position), headphones→wear animation + Dissolved Girl + toast (fade on take-off), mug→steam wisp + caption on click only.
+- [x] M4 DESKTOPPER OS (src/os.js) — sleep→boot→Mint-ish desktop on a 640×480 canvas (real VGA res). Icons, papers/projects windows, doc viewer with open↗, working terminal (help/ls/cat/open/papers/clear/exit), "Wake up…" wallpaper easter egg → matrix rain. Clicks raycast to screen UV; keys forwarded while laptop focused.
+- [x] M5 Audio — user tracks in Assets/ → public/audio/ (gitignored, copyright). Headphones channel + speakers playlist cycle (toast controls), WebAudio brown-noise window ambience after first gesture.
+- [x] M6 Config — everything reads portfolio.json; asset() resolves paths against BASE_URL; placeholder cv.pdf generated (make-cv.mjs).
+- [x] M7 Real CC0 models — Poly Haven classic_laptop (screen node rotated to ~93°, display plane parented into screen mesh local space, 4:3) + desk_lamp_arm_01 (yaw -2.0; head is local -z — found via lamp-sweep.mjs).
+- [ ] Deploy — repo + Pages workflow written; push + live verify in progress.
+
+Notes:
+- Playwright pixel-clicks are brittle (papers under headphones); use window.__dt dev hooks (focus/home/wearPhones/os).
+- Lighting balance point: lamp 5.5, RectArea screen 1.0, bloom threshold 0.85, exposure 1.0, hemi 0.85 evening.
+- User feedback log lives in plan.md + this file; look-verdict re-ask still owed after live demo.

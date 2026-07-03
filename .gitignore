@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.verify/
+
+# User-supplied commercial music — not licensed for redistribution.
+# Drop your own files in public/audio/ locally; portfolio.json points at them.
+public/audio/
+Assets/

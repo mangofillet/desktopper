@@ -1,0 +1,68 @@
+{
+  "name": "J. Doe",
+  "tagline": "physicist · builds odd instruments",
+  "bio": "I study emergent structure in complex systems — how simple rules make complicated things. By night I build small interactive experiments like this desk. Currently a postdoc at the Institute for Placeholder Studies.",
+  "links": {
+    "email": "hi@example.com",
+    "github": "https://github.com/mangofillet",
+    "scholar": "https://scholar.google.com",
+    "linkedin": "https://www.linkedin.com"
+  },
+  "cvUrl": "/cv.pdf",
+  "papers": [
+    {
+      "title": "Emergent Structure in Deep Latent Spaces",
+      "authors": "J. Doe, A. N. Other",
+      "venue": "NeurIPS",
+      "year": 2024,
+      "url": "https://arxiv.org/abs/2400.00001",
+      "abstract": "We show that latent representations in deep generative models self-organise into geometric structures that mirror the symmetries of their training data, and give a practical probe for measuring this alignment."
+    },
+    {
+      "title": "On the Thermodynamics of Small Systems",
+      "authors": "J. Doe, B. Colleague, C. Third",
+      "venue": "Physical Review E",
+      "year": 2023,
+      "url": "https://arxiv.org/abs/2300.00002",
+      "abstract": "Fluctuation theorems are extended to driven mesoscopic systems with measurement feedback, with an experimental protocol realisable in optical tweezer setups."
+    },
+    {
+      "title": "A Bayesian Treatment of Observer Bias in Citizen Science",
+      "authors": "J. Doe, C. Collaborator",
+      "venue": "Methods in Ecology and Evolution",
+      "year": 2022,
+      "url": "https://arxiv.org/abs/2200.00003",
+      "abstract": "A hierarchical model that separates observer skill from detection probability in large volunteer-collected datasets, validated on ten years of bird survey records."
+    },
+    {
+      "title": "Scaling Laws for Coupled Oscillator Networks",
+      "authors": "J. Doe",
+      "venue": "Chaos",
+      "year": 2021,
+      "url": "https://arxiv.org/abs/2100.00004",
+      "abstract": "Synchronisation thresholds in heterogeneous oscillator networks follow a universal scaling collapse across five orders of magnitude in network size."
+    }
+  ],
+  "projects": [
+    {
+      "name": "VECTRIS",
+      "blurb": "3D neon Tetris with a global leaderboard — three.js, WebGL, way too much bloom.",
+      "url": "https://github.com/mangofillet"
+    },
+    {
+      "name": "Desktopper",
+      "blurb": "This desk. A customisable 3D portfolio scene — fork it, swap portfolio.json, done.",
+      "url": "https://github.com/mangofillet"
+    }
+  ],
+  "headphonesTrack": {
+    "title": "Dissolved Girl (Endtrack mix)",
+    "artist": "Massive Attack",
+    "url": "/audio/dissolved-girl.mp3"
+  },
+  "tracks": [
+    { "title": "Dualism", "artist": "", "url": "/audio/dualism.mp3" },
+    { "title": "Washing Machine Heart", "artist": "Mitski", "url": "/audio/washing-machine-heart.mp3" },
+    { "title": "Take My Soul", "artist": "Thievery Corporation", "url": "/audio/take-my-soul.mp3" }
+  ]
+}
