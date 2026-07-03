@@ -253,7 +253,7 @@ export function createOS({ config, openUrl }) {
     ctx.fillText("term", 66, H - BAR + 20);
     region(60, H - BAR + 5, 40, 22, openTerm);
     ctx.textAlign = "right";
-    ctx.fillText("18:47", W - 12, H - BAR + 20);
+    ctx.fillText("23:58", W - 12, H - BAR + 20);
   }
 
   function drawWindow(w) {

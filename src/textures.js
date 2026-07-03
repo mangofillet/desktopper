@@ -257,47 +257,70 @@ export function steamTexture() {
 }
 
 export function skyTexture() {
-  // Late golden-hour afternoon: soft blue overhead melting into honey at the
-  // horizon, low sun hanging just above a distant treeline.
-  const [c, ctx] = makeCanvas(512, 640);
+  // Deep lofi night: green-teal darkness full of stars over a forest
+  // silhouette. Wide format — the window now spans the wall behind the desk.
+  const [c, ctx] = makeCanvas(1024, 640);
   const g = ctx.createLinearGradient(0, 0, 0, 640);
-  g.addColorStop(0, "#8fb0d4");
-  g.addColorStop(0.45, "#c4b492");
-  g.addColorStop(0.75, "#eabd7a");
-  g.addColorStop(1, "#f2c46e");
+  g.addColorStop(0, "#050d0c");
+  g.addColorStop(0.55, "#0a1a16");
+  g.addColorStop(1, "#12241c");
   ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 512, 640);
-  const r = rng(23);
-  // The low sun, big warm halo
-  const halo = ctx.createRadialGradient(370, 430, 14, 370, 430, 130);
-  halo.addColorStop(0, "rgba(255,244,214,1)");
-  halo.addColorStop(0.2, "rgba(255,222,150,0.75)");
-  halo.addColorStop(1, "rgba(255,215,140,0)");
-  ctx.fillStyle = halo;
-  ctx.beginPath();
-  ctx.arc(370, 430, 130, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#fff6dc";
-  ctx.beginPath();
-  ctx.arc(370, 430, 30, 0, Math.PI * 2);
-  ctx.fill();
-  // Soft distant treeline at the horizon
-  ctx.fillStyle = "#57503e";
-  ctx.beginPath();
-  ctx.moveTo(0, 640);
-  ctx.lineTo(0, 560);
-  for (let x = 0; x <= 512; x += 18) {
-    ctx.lineTo(x, 560 - r() * 26 - 8 * Math.sin(x * 0.02));
+  ctx.fillRect(0, 0, 1024, 640);
+  const r = rng(41);
+  // Star field: three size classes, soft glows, a few cross-flare sparklers.
+  for (let i = 0; i < 260; i++) {
+    const x = r() * 1024;
+    const y = r() * 500;
+    const s = r();
+    ctx.globalAlpha = 0.35 + r() * 0.65;
+    if (s > 0.965) {
+      // bright sparkler with glow + cross flare
+      const gl = ctx.createRadialGradient(x, y, 0, x, y, 14);
+      gl.addColorStop(0, "rgba(235,255,245,0.95)");
+      gl.addColorStop(0.3, "rgba(190,235,215,0.35)");
+      gl.addColorStop(1, "rgba(190,235,215,0)");
+      ctx.fillStyle = gl;
+      ctx.beginPath();
+      ctx.arc(x, y, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(230,255,240,0.8)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x - 9, y); ctx.lineTo(x + 9, y);
+      ctx.moveTo(x, y - 9); ctx.lineTo(x, y + 9);
+      ctx.stroke();
+      ctx.fillStyle = "#f4fff8";
+      ctx.beginPath();
+      ctx.arc(x, y, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (s > 0.82) {
+      const gl = ctx.createRadialGradient(x, y, 0, x, y, 5);
+      gl.addColorStop(0, "rgba(220,245,230,0.9)");
+      gl.addColorStop(1, "rgba(220,245,230,0)");
+      ctx.fillStyle = gl;
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = ["#d8ead8", "#c4dcd0", "#e8f4e4"][Math.floor(r() * 3)];
+      ctx.fillRect(x, y, 1.4, 1.4);
+    }
   }
-  ctx.lineTo(512, 640);
-  ctx.closePath();
-  ctx.fill();
-  // A hint of glass: one diagonal sheen across the closed pane
-  const sheen = ctx.createLinearGradient(60, 0, 320, 640);
-  sheen.addColorStop(0.32, "rgba(255,255,255,0)");
-  sheen.addColorStop(0.42, "rgba(255,255,255,0.14)");
-  sheen.addColorStop(0.5, "rgba(255,255,255,0)");
-  ctx.fillStyle = sheen;
-  ctx.fillRect(0, 0, 512, 640);
+  ctx.globalAlpha = 1;
+  // Forest silhouette — layered dark pines
+  for (const [base, col] of [[520, "#0b1410"], [560, "#070e0a"]]) {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(0, 640);
+    ctx.lineTo(0, base);
+    for (let x = 0; x <= 1024; x += 26) {
+      const h = 30 + r() * 55;
+      ctx.lineTo(x + 8, base - h);
+      ctx.lineTo(x + 16, base - h * 0.4);
+    }
+    ctx.lineTo(1024, 640);
+    ctx.closePath();
+    ctx.fill();
+  }
   return toTexture(c);
 }
