@@ -40,24 +40,6 @@ try {
   /* private-mode / disabled storage — fall back to base */
 }
 
-// Owners whose saved config predates the real publication list would otherwise
-// see an empty or placeholder papers folder. If their laptop paper list is
-// empty or still the shipped placeholders, show the current base list instead —
-// in memory only, so nothing they've typed elsewhere is overwritten.
-const OLD_SAMPLE_TITLES = new Set([
-  "Emergent Structure in Deep Latent Spaces",
-  "Scaling Laws for Coupled Oscillator Networks",
-]);
-const papersStale = (arr) =>
-  !Array.isArray(arr) || arr.length === 0 || arr.every((p) => OLD_SAMPLE_TITLES.has(p?.title));
-try {
-  config.laptop = config.laptop || {};
-  if (papersStale(config.laptop.papers) && base.laptop?.papers?.length) {
-    config.laptop.papers = clone(base.laptop.papers);
-  }
-} catch (e) {
-  /* ignore */
-}
 
 let layout = {};
 try {

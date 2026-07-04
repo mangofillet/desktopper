@@ -8,6 +8,20 @@
 import { asset } from "./assets.js";
 import { getPdf } from "./store.js";
 
+// pdf.js is heavy, so it's pulled in only the first time a PDF is opened.
+let _pdfjsP = null;
+function loadPdfjs() {
+  if (!_pdfjsP) {
+    _pdfjsP = (async () => {
+      const pdfjs = await import("pdfjs-dist");
+      const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+      pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+      return pdfjs;
+    })();
+  }
+  return _pdfjsP;
+}
+
 const W = 640;
 const H = 480;
 const BAR = 32;
@@ -30,7 +44,7 @@ export function createOS({ config }) {
       welcome: L.welcome || {},
       about: L.about ?? config.bio ?? "",
       contact: L.contact || config.links || {},
-      papers: L.papers || [],
+      publications: L.publications || {},
       presentations: L.presentations || [],
       projects: L.projects || config.projects || [],
       media: L.media || [],
@@ -229,7 +243,7 @@ export function createOS({ config }) {
 
   // File → reader/doc/link routing.
   const paperItem = (p) => ({ ...p, title: p.title || p.pdfName || "document" });
-  function openPaper(p) { handlers.openReader(paperItem(p)); }
+  function openPaper(p) { openPdf(paperItem(p)); }
   function openContact() {
     const cc = data().contact;
     const links = Object.entries(cc)
@@ -237,26 +251,69 @@ export function createOS({ config }) {
       .map(([k, v]) => ({ label: `${k}: ${v}`, url: k === "email" ? `mailto:${v}` : v }));
     openDoc("contact.txt", "", links);
   }
-  function openCv() {
-    if (config.cvOnRequest || !config.cvUrl) {
-      const email = data().contact.email || config.links?.email || "";
-      openDoc(
-        "cv.txt",
-        "Curriculum Vitae\n\nAvailable upon request." + (email ? "\n\nDrop me a line and I'll send it over." : ""),
-        email ? [{ label: "email me ↗", url: "mailto:" + email }] : []
-      );
-    } else {
-      handlers.openReader({ title: "Curriculum Vitae", pdfUrl: config.cvUrl, pdfName: "cv.pdf" });
+  function openPublications() {
+    const pub = data().publications;
+    openDoc(
+      "publications.txt",
+      pub.blurb || "My publications are listed online.",
+      pub.url ? [{ label: "view my publications ↗", url: pub.url }] : []
+    );
+  }
+
+  // ---------- in-screen PDF viewer (renders pages onto the laptop screen) ----------
+  async function openPdf(item) {
+    const win = {
+      id: ++winId, type: "pdf", title: "▤ " + (item.title || item.pdfName || "document"),
+      x: 74, y: 26, w: 480, h: 388, scroll: 0, pages: null,
+    };
+    windows.push(win);
+    dirty = true;
+    try {
+      let buf = null;
+      if (item.pdfKey) {
+        const blob = await getPdf(item.pdfKey);
+        if (blob) buf = await blob.arrayBuffer();
+      }
+      if (!buf && item.pdfUrl) {
+        const res = await fetch(asset(item.pdfUrl));
+        if (res.ok) buf = await res.arrayBuffer();
+      }
+      if (!windows.includes(win)) return; // closed while loading
+      if (!buf) { win.error = "PDF not found"; dirty = true; return; }
+      const pdfjs = await loadPdfjs();
+      const pdf = await pdfjs.getDocument({ data: buf }).promise;
+      const targetW = 620; // ~fills a maximised window; the screen texture caps detail anyway
+      const pages = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        if (!windows.includes(win)) return;
+        const page = await pdf.getPage(i);
+        const base = page.getViewport({ scale: 1 });
+        const vp = page.getViewport({ scale: targetW / base.width });
+        const c = document.createElement("canvas");
+        c.width = Math.ceil(vp.width);
+        c.height = Math.ceil(vp.height);
+        const cx = c.getContext("2d");
+        cx.fillStyle = "#fff";
+        cx.fillRect(0, 0, c.width, c.height);
+        await page.render({ canvasContext: cx, viewport: vp }).promise;
+        pages.push(c);
+        win.pages = pages.slice(); // progressive: show page 1 as soon as it's ready
+        dirty = true;
+      }
+    } catch (e) {
+      if (windows.includes(win)) { win.error = "couldn't open this PDF"; dirty = true; }
     }
   }
 
   // ---------- folders content ----------
   function folderItems(kind) {
     const d = data();
-    if (kind === "papers")
-      return d.papers.map((p) => ({ glyph: "▤", label: fileName(p.title, "pdf"), onClick: () => openPaper(p) }));
     if (kind === "presentations")
-      return d.presentations.map((p) => ({ glyph: "◈", label: fileName(p.title, "pdf"), onClick: () => openPaper(p) }));
+      return d.presentations.map((p) => ({
+        glyph: p.type === "video" ? "▶" : "◈",
+        label: fileName(p.name || p.title, p.type === "video" ? "mp4" : "pdf"),
+        onClick: () => (p.type === "video" ? openMedia(p) : openPaper(p)),
+      }));
     if (kind === "projects" || kind === "secretprojects") {
       const list = kind === "secretprojects" ? d.secret.projects : d.projects;
       return list.map((p) => ({
@@ -301,8 +358,8 @@ export function createOS({ config }) {
     t.lines.push("jin@desk:~$ " + cmd);
     const [c, ...args] = cmd.trim().split(/\s+/);
     const arg = args.join(" ");
-    const files = ["about.txt", "contact.txt", "cv.pdf"];
-    const dirs = ["papers", "presentations", "media", ...(floppyIn ? ["projects"] : []), "secret"];
+    const files = ["about.txt", "contact.txt", "publications.txt"];
+    const dirs = ["presentations", "media", ...(floppyIn ? ["projects"] : []), "secret"];
     if (!c) {
     } else if (c === "help") {
       t.lines.push("ls · cd <dir> · cat <file> · open <file> · clear · exit");
@@ -313,6 +370,11 @@ export function createOS({ config }) {
       wrap(d.about, 54).forEach((l) => t.lines.push(l));
     } else if (c === "cat" && arg === "contact.txt") {
       Object.entries(d.contact).filter(([, v]) => v).forEach(([k, v]) => t.lines.push(`${k}: ${v}`));
+    } else if (c === "cat" && arg === "publications.txt") {
+      wrap(d.publications.blurb || "", 54).forEach((l) => t.lines.push(l));
+      if (d.publications.url) t.lines.push(d.publications.url);
+    } else if ((c === "open" || c === "cat") && arg === "publications.txt") {
+      openPublications();
     } else if ((c === "open" || c === "cd") && (arg === "secret" || arg === "secret/")) {
       promptSecret();
     } else if (c === "cd" && dirs.includes(arg.replace(/\/$/, ""))) {
@@ -322,10 +384,8 @@ export function createOS({ config }) {
       openDoc("about.txt", d.about, []);
     } else if (c === "open" && arg === "contact.txt") {
       openContact();
-    } else if (c === "open" && arg === "cv.pdf") {
-      openCv();
     } else if (c === "open") {
-      const p = d.papers.concat(d.presentations).find((x) => fileName(x.title, "pdf").startsWith(arg));
+      const p = d.presentations.find((x) => fileName(x.title, "pdf").startsWith(arg));
       if (p) openPaper(p);
       else t.lines.push(`open: ${arg}: not found`);
     } else if (c === "clear") {
@@ -409,11 +469,10 @@ export function createOS({ config }) {
     const rows = [20, 96, 172, 248, 324];
     const cells = [];
     const put = (glyph, label, onClick, color) => cells.push({ glyph, label, onClick, color });
-    put("▤", "papers", () => openFolder("papers", "~/papers", folderItems("papers")));
+    put("✎", "publications", () => openPublications(), "#8fd9a8");
     put("◈", "presentations", () => openFolder("presentations", "Data Analytics & Science Presentations", folderItems("presentations")), "#8fd9a8");
     put("≡", "about.txt", () => openDoc("about.txt", d.about, []));
     put("@", "contact.txt", () => openContact());
-    put("▣", "cv.pdf", () => openCv());
     if (d.media.length) put("♪", "media", () => openFolder("media", "~/media", folderItems("media")));
     if (floppyIn) put("▦", "projects (A:)", () => openFolder("projects", "~/projects", folderItems("projects")), "#8fd9a8");
     put("🔒", "secret", () => promptSecret(), "#c9a86a");
@@ -483,6 +542,8 @@ export function createOS({ config }) {
       });
     } else if (w.type === "media") {
       drawMedia(w);
+    } else if (w.type === "pdf") {
+      drawPdf(w);
     } else if (w.type === "term") {
       windowFrame(w, term?.pw ? "jin@desk: ~ [locked]" : "jin@desk: ~");
       ctx.save();
@@ -567,6 +628,44 @@ export function createOS({ config }) {
     region(pb, py - 4, pw, 12, (px) => {
       if (dur) { el.currentTime = dur * Math.max(0, Math.min(1, (px - pb) / pw)); dirty = true; }
     });
+  }
+
+  function drawPdf(w) {
+    windowFrame(w, w.title);
+    if (w.error) {
+      ctx.fillStyle = "#d39a8e";
+      ctx.font = "13px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(w.error, w.x + w.w / 2, w.y + w.h / 2);
+      return;
+    }
+    if (!w.pages || !w.pages.length) {
+      ctx.fillStyle = "#6fbf8f";
+      ctx.font = "12px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText("rendering…", w.x + w.w / 2, w.y + w.h / 2);
+      return;
+    }
+    const bw = w.w - 24;
+    const gap = 8;
+    const heights = w.pages.map((pc) => pc.height * (bw / pc.width));
+    const contentH = heights.reduce((a, h) => a + h + gap, 8);
+    scrollBody(w, contentH, (bx, byTop) => {
+      let y = byTop + 4;
+      const bodyTop = w.y + 32, bodyBot = w.y + w.h - 12;
+      w.pages.forEach((pc, i) => {
+        const h = heights[i];
+        if (y + h > bodyTop && y < bodyBot) ctx.drawImage(pc, bx, y, bw, h); // cull off-screen pages
+        y += h + gap;
+      });
+    });
+    // page count badge
+    ctx.fillStyle = "rgba(20,26,22,0.8)";
+    ctx.fillRect(w.x + w.w - 62, w.y + w.h - 20, 54, 15);
+    ctx.fillStyle = "#9ab0a0";
+    ctx.font = "10px monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(w.pages.length + " pg", w.x + w.w - 10, w.y + w.h - 9);
   }
 
   // ---------- public API ----------

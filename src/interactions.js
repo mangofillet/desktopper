@@ -164,9 +164,11 @@ export function setupInteractions({
     const d = item.data;
     let html = "";
     if (item.kind === "paper") {
-      // The paper is picked up into the full-screen reader — no side card.
-      reader.open(d);
-      return;
+      // Papers now point at the online publication list rather than fake docs.
+      const pub = config.laptop?.publications || {};
+      html = `<h2>Publications</h2>
+        <p>${pub.blurb || "My publications are listed online."}</p>
+        ${pub.url ? `<a class="btn" href="${pub.url}" target="_blank" rel="noopener">view my publications ↗</a>` : ""}`;
     } else if (item.kind === "cv") {
       if (config.cvOnRequest || !config.cvUrl) {
         const email = config.links?.email || "";

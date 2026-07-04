@@ -10,6 +10,7 @@
     "verify": "node verify.mjs"
   },
   "dependencies": {
+    "pdfjs-dist": "^4.10.38",
     "three": "^0.166.0"
   },
   "devDependencies": {

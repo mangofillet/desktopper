@@ -92,7 +92,7 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
     <div id="dt-edit-tabs">
       <button data-tab="look" class="active">Look</button>
       <button data-tab="profile">Profile</button>
-      <button data-tab="papers">Papers</button>
+      <button data-tab="publications">Publications</button>
       <button data-tab="projects">Projects</button>
       <button data-tab="laptop">Laptop</button>
     </div>
@@ -320,38 +320,16 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
         (v) => ((config.links ??= {}).linkedin = v),
         (v) => (config.cvUrl = v),
       ];
-    } else if (tab === "papers") {
-      html = `<h4>Upload PDFs</h4>
-        <label>Drop in PDF files — one paper per file, title from the filename.</label>
-        <input type="file" accept="application/pdf" multiple data-pdfs>
-        <div style="color:#8c8575;font-size:11px;margin:4px 0 10px">
-          Shows the real PDF (native search + pages). To publish, also drop the
-          files in <code>public/papers/</code> and commit.
-        </div>`;
-      html += (config.papers || [])
-        .map(
-          (p, i) => `<div class="row" data-i="${i}">
-            <div class="rowhead"><b>${p.title || "untitled"}</b>
-              <button class="mini del" data-del="${i}">✕</button></div>
-            <div style="font-size:11.5px;color:#9c9280;margin-bottom:6px">
-              PDF: ${p.pdfName ? p.pdfName : "<i>none</i>"} </div>
-            <label>${p.pdfName ? "Replace PDF" : "Attach PDF"}</label>
-            <input type="file" accept="application/pdf" data-pdf="${i}">
-            ${field("Title", p.title)}
-            ${field("Authors", p.authors)}
-            ${field("Venue", p.venue)}
-            ${field("Year", p.year)}
-            <label>Abstract (optional — only for papers without a PDF)</label><textarea data-bind>${p.abstract ?? ""}</textarea>
-            ${field("Link URL", p.url)}
-          </div>`
-        )
-        .join("");
-      html += `<button class="mini add" data-add="paper">+ add blank paper</button>`;
-      binders = [];
-      (config.papers || []).forEach((p) => {
-        binders.push((v) => (p.title = v), (v) => (p.authors = v), (v) => (p.venue = v),
-          (v) => (p.year = v), (v) => (p.abstract = v), (v) => (p.url = v));
-      });
+    } else if (tab === "publications") {
+      const P = ((config.laptop ??= {}).publications ??= {});
+      html = `<h4>Publications</h4>
+        <div style="color:#8c8575;font-size:11px;margin-bottom:8px">
+          Replaces the old papers list. Shown on the laptop's <b>publications</b>
+          file and the desk papers — links out to your profile.
+        </div>
+        <label>Blurb</label><textarea data-bind>${P.blurb ?? ""}</textarea>
+        ${field("Link (e.g. your Loop / Scholar profile)", P.url)}`;
+      binders = [(v) => (P.blurb = v), (v) => (P.url = v)];
     } else if (tab === "projects") {
       html = `<h4>Ongoing &amp; Planned Projects</h4>`;
       html += (config.projects || [])
@@ -378,7 +356,7 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
       });
     } else if (tab === "laptop") {
       const L = (config.laptop ??= {});
-      L.contact ??= {}; L.papers ??= []; L.presentations ??= []; L.media ??= [];
+      L.contact ??= {}; L.presentations ??= []; L.media ??= [];
       L.secret ??= { password: "", projects: [] };
       html = `
         <div style="color:#8c8575;font-size:11px;margin-bottom:8px">The laptop's own contents — separate from the desk.</div>
@@ -388,16 +366,11 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
         ${field("GitHub", L.contact.github)}
         ${field("Scholar", L.contact.scholar)}
         ${field("LinkedIn", L.contact.linkedin)}
-        <h4>Papers (PDFs)</h4>
-        <input type="file" accept="application/pdf" multiple data-lpdfs="papers">
-        ${L.papers.map((p, i) => `<div class="row"><div class="rowhead"><b>${p.title || p.pdfName || "untitled"}</b>
-          <button class="mini del" data-ldel="papers:${i}">✕</button></div>
-          <div style="font-size:11px;color:#9c9280">PDF: ${p.pdfName || "none"}</div></div>`).join("")}
-        <h4>Data Analytics &amp; Science Presentations (PDFs)</h4>
-        <input type="file" accept="application/pdf" multiple data-lpdfs="presentations">
-        ${L.presentations.map((p, i) => `<div class="row"><div class="rowhead"><b>${p.title || p.pdfName || "untitled"}</b>
+        <h4>Data Analytics &amp; Science Presentations (PDF or video)</h4>
+        <input type="file" accept="application/pdf,video/*" multiple data-lpres>
+        ${L.presentations.map((p, i) => `<div class="row"><div class="rowhead"><b>${p.type === "video" ? "▶" : "◈"} ${p.title || p.name || p.pdfName || "untitled"}</b>
           <button class="mini del" data-ldel="presentations:${i}">✕</button></div>
-          <div style="font-size:11px;color:#9c9280">PDF: ${p.pdfName || "none"}</div></div>`).join("")}
+          <div style="font-size:11px;color:#9c9280">${p.type === "video" ? "video: " + (p.name || "") : "PDF: " + (p.pdfName || "none")}</div></div>`).join("")}
         <h4>Media (mp3 / video)</h4>
         <input type="file" accept="audio/*,video/*" multiple data-lmedia>
         ${L.media.map((m, i) => `<div class="row"><div class="rowhead"><b>${m.type === "video" ? "▶" : "♪"} ${m.name}</b>
@@ -471,6 +444,24 @@ export function setupEditor({ renderer, camera, controls, editables, editState }
         saveConfig();
         renderTab(tab);
       });
+    });
+    // presentations accept PDFs (rendered on screen) or videos (played on screen)
+    const lpres = tabBody.querySelector("[data-lpres]");
+    if (lpres) lpres.addEventListener("change", async () => {
+      L.presentations ??= [];
+      for (const f of lpres.files) {
+        if (f.type.startsWith("video")) {
+          const key = mediaKey();
+          await savePdf(key, f); // IndexedDB stores any blob
+          L.presentations.push({ name: f.name, type: "video", mediaKey: key });
+        } else {
+          const item = { title: "" };
+          L.presentations.push(item);
+          await attachPdf(item, f);
+        }
+      }
+      saveConfig();
+      renderTab(tab);
     });
     const lmedia = tabBody.querySelector("[data-lmedia]");
     if (lmedia) lmedia.addEventListener("change", async () => {
