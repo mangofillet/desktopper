@@ -101,6 +101,19 @@ export function createOS({ config }) {
     windows = windows.filter((v) => v !== w);
     windows.push(w);
   };
+  // Enlarge a window to (almost) fill the screen, or restore its old size.
+  const toggleMax = (w) => {
+    if (w._max) {
+      Object.assign(w, w._restore);
+      w._max = false;
+    } else {
+      w._restore = { x: w.x, y: w.y, w: w.w, h: w.h };
+      w.x = 8; w.y = 6; w.w = W - 16; w.h = H - BAR - 10;
+      w._max = true;
+    }
+    focusWin(w);
+    dirty = true;
+  };
 
   function windowFrame(w, title) {
     const { x, y, w: ww, h: wh } = w;
@@ -117,13 +130,20 @@ export function createOS({ config }) {
     ctx.font = "12px monospace";
     ctx.textAlign = "left";
     ctx.fillStyle = "#b8c8ba";
-    ctx.fillText(title, x + 10, y + 16);
+    ctx.fillText(title.length > 40 ? title.slice(0, 39) + "…" : title, x + 10, y + 16);
+    // enlarge / restore control
+    ctx.fillStyle = "#8fb89a";
+    ctx.font = "13px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(w._max ? "❐" : "▢", x + ww - 34, y + 16);
+    // close dot
     ctx.fillStyle = "#c46a5a";
     ctx.beginPath();
     ctx.arc(x + ww - 14, y + 12, 6, 0, Math.PI * 2);
     ctx.fill();
     region(x, y, ww, 24, () => focusWin(w)); // title bar → focus
-    region(x + ww - 22, y + 2, 20, 20, () => closeWin(w));
+    region(x + ww - 46, y + 2, 22, 20, () => toggleMax(w)); // enlarge / restore
+    region(x + ww - 24, y + 2, 22, 20, () => closeWin(w)); // close
   }
 
   // Clip a scrollable body region and draw rows with vertical scroll.
