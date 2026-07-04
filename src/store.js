@@ -20,13 +20,43 @@ try {
   /* ignore */
 }
 
+// Deep-merge saved edits over the shipped base so that NEW base content (e.g.
+// added papers/sections) still surfaces for returning owners, unless they've
+// specifically overridden that key. Arrays and primitives from `saved` win.
+const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
+function deepMerge(baseV, savedV) {
+  if (!isObj(baseV) || !isObj(savedV)) return savedV === undefined ? baseV : savedV;
+  const out = { ...baseV };
+  for (const k of Object.keys(savedV)) out[k] = deepMerge(baseV[k], savedV[k]);
+  return out;
+}
+
 // Merged config: saved override wins if present, else the shipped base.
 let config = clone(base);
 try {
   const saved = localStorage.getItem(LS_CONFIG);
-  if (saved) config = { ...clone(base), ...JSON.parse(saved) };
+  if (saved) config = deepMerge(clone(base), JSON.parse(saved));
 } catch (e) {
   /* private-mode / disabled storage — fall back to base */
+}
+
+// Owners whose saved config predates the real publication list would otherwise
+// see an empty or placeholder papers folder. If their laptop paper list is
+// empty or still the shipped placeholders, show the current base list instead —
+// in memory only, so nothing they've typed elsewhere is overwritten.
+const OLD_SAMPLE_TITLES = new Set([
+  "Emergent Structure in Deep Latent Spaces",
+  "Scaling Laws for Coupled Oscillator Networks",
+]);
+const papersStale = (arr) =>
+  !Array.isArray(arr) || arr.length === 0 || arr.every((p) => OLD_SAMPLE_TITLES.has(p?.title));
+try {
+  config.laptop = config.laptop || {};
+  if (papersStale(config.laptop.papers) && base.laptop?.papers?.length) {
+    config.laptop.papers = clone(base.laptop.papers);
+  }
+} catch (e) {
+  /* ignore */
 }
 
 let layout = {};
